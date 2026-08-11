@@ -35,7 +35,7 @@ async function requireOwner() {
 }
 
 function toFieldErrors(error: {
-	issues: { path: (string | number)[]; message: string }[];
+	issues: { path: PropertyKey[]; message: string }[];
 }): Partial<Record<string, string>> {
 	const fieldErrors: Partial<Record<string, string>> = {};
 	for (const issue of error.issues) {
@@ -133,46 +133,41 @@ export async function submitPropertyForReviewAction(
 	}
 }
 
-export async function archivePropertyAction(propertyId: string): Promise<PropertyActionState> {
+export async function archivePropertyAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const property = await softDeleteProperty(propertyId, auth.userId);
 	if (!property) {
-		return { error: 'Property not found' };
+		return;
 	}
 	revalidatePath('/owner');
-	return { propertyId: property.id };
 }
 
-export async function restorePropertyAction(propertyId: string): Promise<PropertyActionState> {
+export async function restorePropertyAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const property = await restoreProperty(propertyId, auth.userId);
 	if (!property) {
-		return { error: 'Property not found' };
+		return;
 	}
 	revalidatePath('/owner');
-	return { propertyId: property.id };
 }
 
-export async function deletePropertyForeverAction(
-	propertyId: string
-): Promise<PropertyActionState> {
+export async function deletePropertyForeverAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const deleted = await hardDeleteProperty(propertyId, auth.userId);
 	if (!deleted) {
-		return { error: 'Only archived properties can be permanently deleted' };
+		return;
 	}
 	revalidatePath('/owner');
-	return {};
 }

@@ -24,15 +24,6 @@ export const PROPERTY_CATEGORIES = [
 	{ label: 'Kitty Party', tagName: 'kitty-party' },
 ] as const;
 
-export const HOME_BROWSE_CATEGORIES = [
-	{ id: 'all', label: 'All Categories', tag: '' },
-	...PROPERTY_CATEGORIES.map((category) => ({
-		id: category.tagName,
-		label: category.label,
-		tag: category.tagName,
-	})),
-];
-
 export const PROPERTY_FORM_STEPS = [
 	{ key: 'details', label: 'Property details' },
 	{ key: 'location', label: 'Location' },

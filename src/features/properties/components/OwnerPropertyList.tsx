@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import {
 	archivePropertyAction,
@@ -6,10 +9,20 @@ import {
 } from '@/features/properties/actions';
 import type { PropertyRow } from '@/features/properties/db';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type OwnerPropertyListProps = {
 	properties: PropertyRow[];
 };
+
+type TabKey = 'all' | 'listings' | 'draft' | 'archive';
+
+const TABS: { key: TabKey; label: string }[] = [
+	{ key: 'all', label: 'All' },
+	{ key: 'listings', label: 'Listings' },
+	{ key: 'draft', label: 'Draft' },
+	{ key: 'archive', label: 'Archive' },
+];
 
 function statusLabel(property: PropertyRow) {
 	if (property.isDeleted) {
@@ -30,86 +43,130 @@ function statusLabel(property: PropertyRow) {
 	}
 }
 
-export function OwnerPropertyList({ properties }: OwnerPropertyListProps) {
-	const drafts = properties.filter((property) => !property.isDeleted && property.isDraft);
-	const active = properties.filter((property) => !property.isDeleted && !property.isDraft);
-	const archived = properties.filter((property) => property.isDeleted);
-
-	return (
-		<div className="space-y-10">
-			<PropertySection title="Drafts" empty="No drafts yet." properties={drafts} />
-			<PropertySection title="Submitted" empty="No submitted properties yet." properties={active} />
-			<PropertySection title="Archived" empty="No archived properties." properties={archived} />
-		</div>
-	);
+function filterByTab(properties: PropertyRow[], tab: TabKey) {
+	switch (tab) {
+		case 'listings':
+			return properties.filter((property) => !property.isDeleted && !property.isDraft);
+		case 'draft':
+			return properties.filter((property) => !property.isDeleted && property.isDraft);
+		case 'archive':
+			return properties.filter((property) => property.isDeleted);
+		default:
+			return properties;
+	}
 }
 
-function PropertySection({
-	title,
-	empty,
-	properties,
-}: {
-	title: string;
-	empty: string;
-	properties: PropertyRow[];
-}) {
+function emptyMessage(tab: TabKey) {
+	switch (tab) {
+		case 'listings':
+			return 'No listings yet.';
+		case 'draft':
+			return 'No drafts yet.';
+		case 'archive':
+			return 'No archived properties.';
+		default:
+			return 'No properties yet.';
+	}
+}
+
+export function OwnerPropertyList({ properties }: OwnerPropertyListProps) {
+	const [tab, setTab] = useState<TabKey>('all');
+	const rows = filterByTab(properties, tab);
+
 	return (
-		<section className="space-y-3">
-			<h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-			{properties.length === 0 ? (
-				<p className="text-sm text-muted-foreground">{empty}</p>
-			) : (
-				<ul className="space-y-3">
-					{properties.map((property) => (
-						<li
-							key={property.id}
-							className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-center sm:justify-between"
-						>
-							<div>
-								<p className="font-medium text-foreground">{property.propertyName}</p>
-								<p className="mt-1 text-sm text-muted-foreground">
-									{property.city || 'City not set'} · {statusLabel(property)}
-								</p>
-								{property.listingStatus === 'REJECTED' && property.listingRejectionReason ? (
-									<p className="mt-1 text-[11px] text-destructive">
-										{property.listingRejectionReason}
-									</p>
-								) : null}
-							</div>
-							<div className="flex flex-wrap gap-2">
-								{!property.isDeleted && (
-									<Link
-										href={`/owner/properties/${property.id}/edit`}
-										className={buttonVariants({ variant: 'outline', size: 'sm' })}
-									>
-										{property.isDraft ? 'Continue' : 'Edit'}
-									</Link>
-								)}
-								{!property.isDeleted ? (
-									<form action={archivePropertyAction.bind(null, property.id)}>
-										<Button type="submit" variant="outline" size="sm">
-											Archive
-										</Button>
-									</form>
-								) : (
-									<>
-										<form action={restorePropertyAction.bind(null, property.id)}>
-											<Button type="submit" variant="outline" size="sm">
-												Restore
-											</Button>
-										</form>
-										<form action={deletePropertyForeverAction.bind(null, property.id)}>
-											<Button type="submit" variant="destructive" size="sm">
-												Delete forever
-											</Button>
-										</form>
-									</>
-								)}
-							</div>
-						</li>
-					))}
+		<div className="space-y-4">
+			<nav aria-label="Property filters" className="border-b border-border">
+				<ul className="flex gap-1 overflow-x-auto">
+					{TABS.map((item) => {
+						const active = tab === item.key;
+						return (
+							<li key={item.key} className="shrink-0">
+								<button
+									type="button"
+									onClick={() => setTab(item.key)}
+									className={cn(
+										'px-3 py-2 text-sm transition-colors',
+										active
+											? 'border-b-2 border-foreground font-semibold text-foreground'
+											: 'border-b-2 border-transparent text-muted-foreground hover:text-foreground'
+									)}
+								>
+									{item.label}
+								</button>
+							</li>
+						);
+					})}
 				</ul>
+			</nav>
+
+			{rows.length === 0 ? (
+				<p className="py-10 text-center text-sm text-muted-foreground">{emptyMessage(tab)}</p>
+			) : (
+				<div className="overflow-x-auto rounded-xl border border-border">
+					<table className="w-full min-w-[40rem] text-left text-sm">
+						<thead className="border-b border-border bg-secondary/40 text-muted-foreground">
+							<tr>
+								<th className="px-4 py-3 font-medium">Property</th>
+								<th className="px-4 py-3 font-medium">City</th>
+								<th className="px-4 py-3 font-medium">Status</th>
+								<th className="px-4 py-3 font-medium text-right">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{rows.map((property) => (
+								<tr key={property.id} className="border-b border-border last:border-b-0">
+									<td className="px-4 py-3 align-top">
+										<p className="font-medium text-foreground">{property.propertyName}</p>
+										{property.listingStatus === 'REJECTED' && property.listingRejectionReason ? (
+											<p className="mt-1 text-[11px] text-destructive">
+												{property.listingRejectionReason}
+											</p>
+										) : null}
+									</td>
+									<td className="px-4 py-3 align-top text-muted-foreground">
+										{property.city || '—'}
+									</td>
+									<td className="px-4 py-3 align-top text-muted-foreground">
+										{statusLabel(property)}
+									</td>
+									<td className="px-4 py-3 align-top">
+										<div className="flex flex-wrap justify-end gap-2">
+											{!property.isDeleted && (
+												<Link
+													href={`/owner/properties/${property.id}/edit`}
+													className={buttonVariants({ variant: 'outline', size: 'sm' })}
+												>
+													{property.isDraft ? 'Continue' : 'Edit'}
+												</Link>
+											)}
+											{!property.isDeleted ? (
+												<form action={archivePropertyAction.bind(null, property.id)}>
+													<Button type="submit" variant="outline" size="sm">
+														Archive
+													</Button>
+												</form>
+											) : (
+												<>
+													<form action={restorePropertyAction.bind(null, property.id)}>
+														<Button type="submit" variant="outline" size="sm">
+															Restore
+														</Button>
+													</form>
+													<form action={deletePropertyForeverAction.bind(null, property.id)}>
+														<Button type="submit" variant="destructive" size="sm">
+															Delete forever
+														</Button>
+													</form>
+												</>
+											)}
+										</div>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
 			)}
-		</section>
+		</div>
 	);
 }

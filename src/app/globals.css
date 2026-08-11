@@ -5,24 +5,24 @@
 
 :root {
 	/* Ink & gold — formal banquet / hotel energy */
-	--background: #f4f5f4;
+	--background: #ffffff;
 	--foreground: #1f2a2e;
-	--card: #fcfcfb;
+	--card: #ffffff;
 	--card-foreground: #1f2a2e;
-	--popover: #fcfcfb;
+	--popover: #ffffff;
 	--popover-foreground: #1f2a2e;
 	--primary: #1f2a2e;
 	--primary-foreground: #f7f3ea;
-	--secondary: #e8ebe9;
+	--secondary: #f3f4f3;
 	--secondary-foreground: #2f3b40;
-	--muted: #eceeed;
+	--muted: #f3f4f3;
 	--muted-foreground: #5f6b70;
 	--accent: #e8dcc4;
 	--accent-foreground: #2a2418;
 	--destructive: #b42318;
 	--destructive-foreground: #f7f3ea;
-	--border: #d8ddd9;
-	--input: #d8ddd9;
+	--border: #e6e9e6;
+	--input: #e6e9e6;
 	--ring: #1f2a2e;
 	--chart-1: #1f2a2e;
 	--chart-2: #c2a36a;
@@ -190,11 +190,11 @@
 }
 
 @utility page-container {
-	@apply mx-auto w-full max-w-5xl px-4;
+	@apply mx-auto w-full max-w-[1120px] px-4 sm:px-6;
 }
 
 @utility page-container-wide {
-	@apply mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-10;
+	@apply mx-auto w-full max-w-[1824px] px-5 sm:px-8 lg:px-12 xl:px-16;
 }
 
 @utility page-main {

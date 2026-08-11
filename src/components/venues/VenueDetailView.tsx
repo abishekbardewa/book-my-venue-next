@@ -11,7 +11,7 @@ type VenueDetailViewProps = {
 
 export function VenueDetailView({ venue }: VenueDetailViewProps) {
 	return (
-		<div className="page-container-wide space-y-8 py-8">
+		<div className="page-container space-y-8 py-8">
 			<div className="space-y-3">
 				<Link
 					href="/"

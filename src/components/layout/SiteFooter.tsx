@@ -10,7 +10,7 @@ export function SiteFooter() {
 	const year = new Date().getFullYear();
 
 	return (
-		<footer className="mt-auto border-t border-border bg-card">
+		<footer className="mt-auto bg-secondary/70">
 			<div className="page-container-wide flex flex-col gap-3 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
 				<p>© {year} BookMyVenue. All Rights Reserved.</p>
 				<nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Legal">

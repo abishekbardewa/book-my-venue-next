@@ -1,34 +1,39 @@
 import Link from 'next/link';
-import { auth, signOut } from '@/auth';
+import { signOut } from '@/auth';
 import { BrandMark } from '@/components/layout/BrandMark';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { UserAccountMenu } from '@/components/layout/UserAccountMenu';
+import { buttonVariants } from '@/components/ui/button';
+import { getCurrentUser } from '@/features/users/getCurrentUser';
+
+async function signOutAction() {
+	'use server';
+	await signOut({ redirectTo: '/' });
+}
 
 export async function SiteHeader() {
-	const session = await auth();
+	const { user } = await getCurrentUser();
 
 	return (
-		<header className="sticky top-0 z-50 border-b border-border bg-card/95 shadow-sm backdrop-blur-sm">
+		<header className="sticky top-0 z-50 bg-secondary/90 backdrop-blur-md">
 			<div className="site-header-inner">
 				<Link href="/" aria-label="Book My Venue home">
-					<BrandMark />
+					<BrandMark size="sm" />
 				</Link>
 				<div className="flex items-center gap-2 sm:gap-3">
-					{session?.user ? (
-						<form
-							action={async () => {
-								'use server';
-								await signOut({ redirectTo: '/' });
-							}}
-						>
-							<Button type="submit" variant="outline" size="sm">
-								Sign out
-							</Button>
-						</form>
+					{user ? (
+						<UserAccountMenu
+							email={user.email}
+							firstName={user.firstName}
+							lastName={user.lastName}
+							avatar={user.avatar}
+							role={user.role}
+							signOutAction={signOutAction}
+						/>
 					) : (
 						<>
 							<Link
 								href="/sign-in"
-								className={buttonVariants({ variant: 'outline', size: 'sm' })}
+								className={buttonVariants({ variant: 'ghost', size: 'sm' })}
 							>
 								Sign in
 							</Link>

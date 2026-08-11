@@ -22,13 +22,8 @@ export function BrandMark({ className, showWordmark = true, size = 'md' }: Brand
 				<MapPin className={cn(icon, 'fill-current')} aria-hidden />
 			</span>
 			{showWordmark ? (
-				<span className="flex min-w-0 flex-col leading-tight">
-					<span className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-						Book My Venue
-					</span>
-					<span className="text-[11px] font-medium tracking-wide text-muted-foreground sm:text-xs">
-						Event spaces near you
-					</span>
+				<span className="text-lg font-bold tracking-tight text-foreground uppercase sm:text-xl">
+					bookmyvenue
 				</span>
 			) : null}
 		</span>
