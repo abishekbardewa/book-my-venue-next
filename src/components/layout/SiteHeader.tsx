@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { signOut } from '@/auth';
 import { BrandMark } from '@/components/layout/BrandMark';
+import { SiteHeaderNav } from '@/components/layout/SiteHeaderNav';
 import { UserAccountMenu } from '@/components/layout/UserAccountMenu';
 import { buttonVariants } from '@/components/ui/button';
 import { getCurrentUser } from '@/features/users/getCurrentUser';
@@ -16,10 +17,12 @@ export async function SiteHeader() {
 	return (
 		<header className="sticky top-0 z-50 bg-secondary/90 backdrop-blur-md">
 			<div className="site-header-inner">
-				<Link href="/" aria-label="Book My Venue home">
+				<Link href="/" aria-label="Book My Venue home" className="shrink-0">
 					<BrandMark size="sm" />
 				</Link>
-				<div className="flex items-center gap-2 sm:gap-3">
+
+				<div className="ml-auto flex shrink-0 items-center gap-6 sm:gap-8">
+					{user ? <SiteHeaderNav role={user.role} /> : null}
 					{user ? (
 						<UserAccountMenu
 							email={user.email}

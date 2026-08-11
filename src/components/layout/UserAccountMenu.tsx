@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { LogOut, UserRound } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -43,6 +45,17 @@ function formatRoleLabel(role: AppUserRole) {
 	}
 }
 
+function profileHrefForRole(role: AppUserRole) {
+	switch (role) {
+		case 'OWNER':
+			return '/owner/profile';
+		case 'PLATFORM_ADMIN':
+			return null;
+		default:
+			return null;
+	}
+}
+
 export function UserAccountMenu({
 	email,
 	firstName,
@@ -52,6 +65,7 @@ export function UserAccountMenu({
 	signOutAction,
 }: UserAccountMenuProps) {
 	const initials = getInitials(firstName, lastName, email);
+	const profileHref = profileHrefForRole(role);
 
 	return (
 		<DropdownMenu>
@@ -77,6 +91,14 @@ export function UserAccountMenu({
 					</Badge>
 				</div>
 				<DropdownMenuSeparator className="my-0" />
+				{profileHref ? (
+					<DropdownMenuItem asChild className="rounded-none px-3 py-2.5 focus:rounded-none">
+						<Link href={profileHref} className="cursor-pointer">
+							<UserRound className="size-4" aria-hidden />
+							Profile
+						</Link>
+					</DropdownMenuItem>
+				) : null}
 				<form action={signOutAction}>
 					<DropdownMenuItem
 						variant="destructive"
@@ -84,6 +106,7 @@ export function UserAccountMenu({
 						className="rounded-none px-3 py-2.5 focus:rounded-none"
 					>
 						<button type="submit" className="w-full cursor-pointer">
+							<LogOut className="size-4" aria-hidden />
 							Log out
 						</button>
 					</DropdownMenuItem>

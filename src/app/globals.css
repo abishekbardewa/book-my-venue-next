@@ -202,7 +202,7 @@
 }
 
 @utility site-header-inner {
-	@apply page-container-wide flex min-h-16 items-center justify-between py-2.5;
+	@apply page-container-wide flex min-h-16 items-center justify-between gap-3 py-2.5;
 }
 
 @keyframes home-rise {
