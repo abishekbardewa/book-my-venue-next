@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, CalendarDays, Shield } from 'lucide-react';
+import { Building2, CalendarDays, ClipboardList } from 'lucide-react';
 import type { AppUserRole } from '@/features/users/db';
 import { cn } from '@/lib/utils';
 
@@ -16,7 +16,6 @@ type NavItem = {
 function isOwnerPropertyPath(pathname: string) {
 	if (!pathname.startsWith('/owner')) return false;
 	if (pathname.startsWith('/owner/bookings')) return false;
-	if (pathname.startsWith('/owner/profile')) return false;
 	return true;
 }
 
@@ -41,8 +40,8 @@ function linksForRole(role: AppUserRole): NavItem[] {
 			return [
 				{
 					href: '/admin',
-					label: 'Admin',
-					icon: Shield,
+					label: 'Listings',
+					icon: ClipboardList,
 					match: (pathname) => pathname.startsWith('/admin'),
 				},
 			];
@@ -75,9 +74,7 @@ export function SiteHeaderNav({ role }: SiteHeaderNavProps) {
 						href={item.href}
 						className={cn(
 							'inline-flex items-center gap-1.5 text-sm transition-colors',
-							active
-								? 'font-semibold text-foreground'
-								: 'font-medium text-muted-foreground hover:text-foreground'
+							active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground hover:text-foreground',
 						)}
 					>
 						<Icon className="size-4" aria-hidden />

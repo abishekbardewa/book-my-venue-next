@@ -225,7 +225,7 @@
 	}
 }
 
-@keyframes venue-card-in {
+@keyframes listing-card-in {
 	from {
 		opacity: 0;
 		transform: translateY(16px);
@@ -252,8 +252,8 @@
 	animation: home-rise 700ms 220ms ease-out both;
 }
 
-.venue-card {
-	animation: venue-card-in 600ms ease-out both;
+.listing-card {
+	animation: listing-card-in 600ms ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -265,7 +265,7 @@
 	.home-hero-copy,
 	.home-search,
 	.home-categories,
-	.venue-card {
+	.listing-card {
 		animation: none;
 	}
 }

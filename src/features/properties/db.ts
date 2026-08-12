@@ -9,8 +9,9 @@ import {
 	UserTable,
 } from '@/drizzle/schema';
 import {
-	VENUE_IMAGE_PLACEHOLDER,
-	type PublicVenue,
+	LISTING_IMAGE_PLACEHOLDER,
+	type AdminListingDetail,
+	type PublicListing,
 } from '@/features/properties/types';
 
 export type PropertyRow = typeof PropertyTable.$inferSelect;
@@ -247,9 +248,9 @@ function ownerDisplayName(firstName: string | null, lastName: string | null, ema
 	return name || email.split('@')[0] || 'Owner';
 }
 
-async function attachVenueRelations(
+async function attachListingRelations(
 	properties: (typeof PropertyTable.$inferSelect)[]
-): Promise<PublicVenue[]> {
+): Promise<PublicListing[]> {
 	if (properties.length === 0) {
 		return [];
 	}
@@ -303,8 +304,8 @@ async function attachVenueRelations(
 			city: property.city,
 			country: property.country,
 			price: toPrice(property.price),
-			image: gallery[0] ?? VENUE_IMAGE_PLACEHOLDER,
-			images: gallery.length > 0 ? gallery : [VENUE_IMAGE_PLACEHOLDER],
+			image: gallery[0] ?? LISTING_IMAGE_PLACEHOLDER,
+			images: gallery.length > 0 ? gallery : [LISTING_IMAGE_PLACEHOLDER],
 			tags: tagsByProperty.get(property.id) ?? [],
 			address: property.address,
 			description: property.description,
@@ -319,17 +320,17 @@ async function attachVenueRelations(
 	});
 }
 
-export async function listApprovedVenues(): Promise<PublicVenue[]> {
+export async function listApprovedListings(): Promise<PublicListing[]> {
 	const properties = await db
 		.select()
 		.from(PropertyTable)
 		.where(approvedFilter)
 		.orderBy(desc(PropertyTable.updatedAt));
 
-	return attachVenueRelations(properties);
+	return attachListingRelations(properties);
 }
 
-export async function getApprovedVenueById(id: string): Promise<PublicVenue | null> {
+export async function getApprovedListingById(id: string): Promise<PublicListing | null> {
 	const [property] = await db
 		.select()
 		.from(PropertyTable)
@@ -340,14 +341,141 @@ export async function getApprovedVenueById(id: string): Promise<PublicVenue | nu
 		return null;
 	}
 
-	const [venue] = await attachVenueRelations([property]);
-	return venue ?? null;
+	const [listing] = await attachListingRelations([property]);
+	return listing ?? null;
 }
 
-export async function listApprovedVenueIds(): Promise<string[]> {
+const moderationFilter = and(
+	eq(PropertyTable.isDeleted, false),
+	eq(PropertyTable.isDraft, false),
+	inArray(PropertyTable.listingStatus, ['PENDING_REVIEW', 'APPROVED', 'REJECTED'])
+);
+
+export async function getModerationListingById(
+	id: string
+): Promise<AdminListingDetail | null> {
+	const [property] = await db
+		.select()
+		.from(PropertyTable)
+		.where(and(eq(PropertyTable.id, id), moderationFilter))
+		.limit(1);
+
+	if (!property) {
+		return null;
+	}
+
+	const [listing] = await attachListingRelations([property]);
+	if (!listing) {
+		return null;
+	}
+
+	const [owner] = await db
+		.select()
+		.from(UserTable)
+		.where(eq(UserTable.id, property.ownerId))
+		.limit(1);
+
+	return {
+		...listing,
+		listingStatus: property.listingStatus,
+		ownerEmail: owner?.email ?? 'Unknown',
+		listingRejectionReason: property.listingRejectionReason,
+		listingReviewedAt: property.listingReviewedAt
+			? property.listingReviewedAt.toISOString()
+			: null,
+	};
+}
+
+export async function listApprovedListingIds(): Promise<string[]> {
 	const rows = await db
 		.select({ id: PropertyTable.id })
 		.from(PropertyTable)
 		.where(approvedFilter);
 	return rows.map((row) => row.id);
+}
+
+export type AdminListingRow = PropertyRow & {
+	ownerEmail: string;
+	ownerName: string;
+};
+
+export async function listModerationListings(): Promise<AdminListingRow[]> {
+	const properties = await db
+		.select()
+		.from(PropertyTable)
+		.where(
+			and(
+				eq(PropertyTable.isDeleted, false),
+				eq(PropertyTable.isDraft, false),
+				inArray(PropertyTable.listingStatus, ['PENDING_REVIEW', 'APPROVED', 'REJECTED'])
+			)
+		)
+		.orderBy(desc(PropertyTable.updatedAt));
+
+	if (properties.length === 0) {
+		return [];
+	}
+
+	const ownerIds = [...new Set(properties.map((property) => property.ownerId))];
+	const owners = await db.select().from(UserTable).where(inArray(UserTable.id, ownerIds));
+	const ownerById = new Map(owners.map((owner) => [owner.id, owner]));
+
+	return properties.map((property) => {
+		const owner = ownerById.get(property.ownerId);
+		return {
+			...property,
+			ownerEmail: owner?.email ?? 'Unknown',
+			ownerName: owner
+				? ownerDisplayName(owner.firstName, owner.lastName, owner.email)
+				: 'Owner',
+		};
+	});
+}
+
+export async function approvePropertyListing(propertyId: string, adminId: string) {
+	const [property] = await db
+		.update(PropertyTable)
+		.set({
+			listingStatus: 'APPROVED',
+			listingRejectionReason: null,
+			listingReviewedBy: adminId,
+			listingReviewedAt: new Date(),
+		})
+		.where(
+			and(
+				eq(PropertyTable.id, propertyId),
+				eq(PropertyTable.isDeleted, false),
+				eq(PropertyTable.isDraft, false),
+				eq(PropertyTable.listingStatus, 'PENDING_REVIEW')
+			)
+		)
+		.returning();
+
+	return property ?? null;
+}
+
+export async function rejectPropertyListing(
+	propertyId: string,
+	adminId: string,
+	reason: string
+) {
+	const [property] = await db
+		.update(PropertyTable)
+		.set({
+			listingStatus: 'REJECTED',
+			listingRejectionReason: reason,
+			listingReviewedBy: adminId,
+			listingReviewedAt: new Date(),
+		})
+		.where(
+			and(
+				eq(PropertyTable.id, propertyId),
+				eq(PropertyTable.isDeleted, false),
+				eq(PropertyTable.isDraft, false),
+				eq(PropertyTable.listingStatus, 'PENDING_REVIEW')
+			)
+		)
+		.returning();
+
+	return property ?? null;
 }

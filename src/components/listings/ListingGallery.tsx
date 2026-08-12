@@ -1,11 +1,11 @@
 import Image from 'next/image';
 
-type VenueGalleryProps = {
+type ListingGalleryProps = {
 	propertyName: string;
 	images: string[];
 };
 
-export function VenueGallery({ propertyName, images }: VenueGalleryProps) {
+export function ListingGallery({ propertyName, images }: ListingGalleryProps) {
 	const [hero, ...thumbs] = images;
 	const sideImages = thumbs.slice(0, 4);
 

@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import { formatInr } from '@/lib/format';
-import type { PublicVenue } from '@/features/properties/types';
+import type { PublicListing } from '@/features/properties/types';
 import { Button } from '@/components/ui/button';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 
-type VenueReservationCardProps = {
-	venue: PublicVenue;
+type ListingReservationCardProps = {
+	listing: PublicListing;
 };
 
-export function VenueReservationCard({ venue }: VenueReservationCardProps) {
+export function ListingReservationCard({ listing }: ListingReservationCardProps) {
 	const [startDate, setStartDate] = useState<Date>();
 	const [endDate, setEndDate] = useState<Date>();
 
@@ -21,12 +21,12 @@ export function VenueReservationCard({ venue }: VenueReservationCardProps) {
 		return diff > 0 ? diff : 0;
 	}, [startDate, endDate]);
 
-	const total = days > 0 ? days * venue.price : venue.price;
+	const total = days > 0 ? days * listing.price : listing.price;
 
 	return (
 		<aside className="rounded-xl border border-border bg-card p-5 shadow-lg">
 			<p className="text-lg font-semibold text-foreground">
-				{formatInr(venue.price)}{' '}
+				{formatInr(listing.price)}{' '}
 				<span className="text-sm font-normal text-muted-foreground">Per Day</span>
 			</p>
 

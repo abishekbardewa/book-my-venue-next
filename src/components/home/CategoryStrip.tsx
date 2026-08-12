@@ -37,7 +37,7 @@ type CategoryStripProps = {
 
 export function CategoryStrip({ activeTag, onChange }: CategoryStripProps) {
 	return (
-		<nav aria-label="Venue categories" className="home-categories">
+		<nav aria-label="Listing categories" className="home-categories">
 			<ul className="flex flex-wrap justify-center gap-2">
 				{PROPERTY_CATEGORIES.map((category) => {
 					const Icon = CATEGORY_ICONS[category.tagName] ?? Home;

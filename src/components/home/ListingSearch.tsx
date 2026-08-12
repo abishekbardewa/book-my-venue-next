@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
-export function VenueSearch({ className }: { className?: string }) {
+export function ListingSearch({ className }: { className?: string }) {
 	const [city, setCity] = useState('all');
 	const [query, setQuery] = useState('');
 

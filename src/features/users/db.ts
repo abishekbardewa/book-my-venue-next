@@ -53,3 +53,24 @@ export async function completeUserOnboarding(
 
 	return user;
 }
+
+export async function updateUserProfile(
+	userId: string,
+	input: {
+		firstName: string;
+		lastName: string;
+		phone: string;
+	}
+) {
+	const [user] = await db
+		.update(UserTable)
+		.set({
+			firstName: input.firstName,
+			lastName: input.lastName,
+			phone: input.phone,
+		})
+		.where(eq(UserTable.id, userId))
+		.returning();
+
+	return user;
+}

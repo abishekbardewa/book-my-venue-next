@@ -1,16 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { LogOut, UserRound } from 'lucide-react';
+import { Building2, LogOut, Shield, User, UserRound } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import type { AppUserRole } from '@/features/users/db';
 
 type UserAccountMenuProps = {
@@ -34,77 +29,46 @@ function getInitials(firstName: string | null, lastName: string | null, email: s
 	return email.charAt(0).toUpperCase();
 }
 
-function formatRoleLabel(role: AppUserRole) {
+function roleDisplay(role: AppUserRole): { label: string; icon: LucideIcon } {
 	switch (role) {
 		case 'PLATFORM_ADMIN':
-			return 'Platform admin';
+			return { label: 'PLATFORM ADMIN', icon: Shield };
 		case 'OWNER':
-			return 'Owner';
+			return { label: 'OWNER', icon: Building2 };
 		default:
-			return 'Customer';
+			return { label: 'CUSTOMER', icon: User };
 	}
 }
 
-function profileHrefForRole(role: AppUserRole) {
-	switch (role) {
-		case 'OWNER':
-			return '/owner/profile';
-		case 'PLATFORM_ADMIN':
-			return null;
-		default:
-			return null;
-	}
-}
-
-export function UserAccountMenu({
-	email,
-	firstName,
-	lastName,
-	avatar,
-	role,
-	signOutAction,
-}: UserAccountMenuProps) {
+export function UserAccountMenu({ email, firstName, lastName, avatar, role, signOutAction }: UserAccountMenuProps) {
 	const initials = getInitials(firstName, lastName, email);
-	const profileHref = profileHrefForRole(role);
+	const { label: roleLabel, icon: RoleIcon } = roleDisplay(role);
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				aria-label="Account menu"
-				className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-			>
+			<DropdownMenuTrigger aria-label="Account menu" className="rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
 				<Avatar size="default" className="cursor-pointer">
 					{avatar ? <AvatarImage src={avatar} alt="" /> : null}
-					<AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">
-						{initials}
-					</AvatarFallback>
+					<AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">{initials}</AvatarFallback>
 				</Avatar>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent
-				align="end"
-				className="min-w-56 overflow-hidden rounded-xl p-0"
-			>
+			<DropdownMenuContent align="end" className="min-w-56 overflow-hidden rounded-xl p-0">
 				<div className="bg-secondary/70 px-3 py-2.5">
 					<p className="truncate text-sm font-medium text-foreground">{email}</p>
-					<Badge variant="secondary" className="mt-2">
-						{formatRoleLabel(role)}
+					<Badge variant="secondary" className="mt-2 gap-1.5">
+						<RoleIcon className="size-3.5" aria-hidden />
+						{roleLabel}
 					</Badge>
 				</div>
 				<DropdownMenuSeparator className="my-0" />
-				{profileHref ? (
-					<DropdownMenuItem asChild className="rounded-none px-3 py-2.5 focus:rounded-none">
-						<Link href={profileHref} className="cursor-pointer">
-							<UserRound className="size-4" aria-hidden />
-							Profile
-						</Link>
-					</DropdownMenuItem>
-				) : null}
+				<DropdownMenuItem asChild className="rounded-none px-3 py-2.5 focus:rounded-none">
+					<Link href="/profile" className="cursor-pointer">
+						<UserRound className="size-4" aria-hidden />
+						Profile
+					</Link>
+				</DropdownMenuItem>
 				<form action={signOutAction}>
-					<DropdownMenuItem
-						variant="destructive"
-						asChild
-						className="rounded-none px-3 py-2.5 focus:rounded-none"
-					>
+					<DropdownMenuItem variant="destructive" asChild className="rounded-none px-3 py-2.5 focus:rounded-none">
 						<button type="submit" className="w-full cursor-pointer">
 							<LogOut className="size-4" aria-hidden />
 							Log out
