@@ -7,7 +7,9 @@ import {
 	deletePropertyForeverAction,
 	restorePropertyAction,
 } from '@/features/properties/actions';
+import { Building2 } from 'lucide-react';
 import type { PropertyRow } from '@/features/properties/db';
+import { EmptyState } from '@/components/common/EmptyState';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -56,16 +58,28 @@ function filterByTab(properties: PropertyRow[], tab: TabKey) {
 	}
 }
 
-function emptyMessage(tab: TabKey) {
+function emptyCopy(tab: TabKey) {
 	switch (tab) {
 		case 'listings':
-			return 'No listings yet.';
+			return {
+				title: 'No listings yet',
+				description: 'Submit a property for review to see it here.',
+			};
 		case 'draft':
-			return 'No drafts yet.';
+			return {
+				title: 'No drafts yet',
+				description: 'Saved drafts will appear in this tab.',
+			};
 		case 'archive':
-			return 'No archived properties.';
+			return {
+				title: 'No archived properties',
+				description: 'Archived properties will show up here.',
+			};
 		default:
-			return 'No properties yet.';
+			return {
+				title: 'No properties yet',
+				description: 'Add your first property to get started.',
+			};
 	}
 }
 
@@ -100,7 +114,12 @@ export function OwnerPropertyList({ properties }: OwnerPropertyListProps) {
 			</nav>
 
 			{rows.length === 0 ? (
-				<p className="py-10 text-center text-sm text-muted-foreground">{emptyMessage(tab)}</p>
+				<EmptyState
+					icon={Building2}
+					title={emptyCopy(tab).title}
+					description={emptyCopy(tab).description}
+					className="py-16"
+				/>
 			) : (
 				<div className="overflow-x-auto rounded-xl border border-border">
 					<table className="w-full min-w-[40rem] text-left text-sm">

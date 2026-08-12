@@ -256,6 +256,44 @@
 	animation: listing-card-in 600ms ease-out both;
 }
 
+@keyframes search-dots-bounce {
+	0%,
+	100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-4px);
+	}
+}
+
+.search-loader-dots {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 3px;
+}
+
+.search-loader-dots span {
+	display: block;
+	width: 4px;
+	height: 4px;
+	border-radius: 9999px;
+	background-color: currentColor;
+	animation: search-dots-bounce 0.6s infinite ease-in-out;
+}
+
+.search-loader-dots span:nth-child(1) {
+	animation-delay: 0s;
+}
+
+.search-loader-dots span:nth-child(2) {
+	animation-delay: 0.15s;
+}
+
+.search-loader-dots span:nth-child(3) {
+	animation-delay: 0.3s;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	html {
 		scroll-behavior: auto;
@@ -266,6 +304,10 @@
 	.home-search,
 	.home-categories,
 	.listing-card {
+		animation: none;
+	}
+
+	.search-loader-dots span {
 		animation: none;
 	}
 }

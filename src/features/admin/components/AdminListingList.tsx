@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { ClipboardList } from 'lucide-react';
 import { approveListingAction } from '@/features/admin/actions';
 import { RejectListingDialog } from '@/features/admin/components/RejectListingDialog';
 import type { AdminListingRow } from '@/features/properties/db';
+import { EmptyState } from '@/components/common/EmptyState';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -47,16 +49,28 @@ function filterByTab(listings: AdminListingRow[], tab: TabKey) {
 	}
 }
 
-function emptyMessage(tab: TabKey) {
+function emptyCopy(tab: TabKey) {
 	switch (tab) {
 		case 'pending':
-			return 'No listings waiting for review.';
+			return {
+				title: 'No listings waiting for review',
+				description: 'New owner submissions will show up in this tab.',
+			};
 		case 'approved':
-			return 'No approved listings.';
+			return {
+				title: 'No approved listings',
+				description: 'Approved properties will appear here.',
+			};
 		case 'rejected':
-			return 'No rejected listings.';
+			return {
+				title: 'No rejected listings',
+				description: 'Rejected submissions will appear here.',
+			};
 		default:
-			return 'No submitted listings yet.';
+			return {
+				title: 'No submitted listings yet',
+				description: 'Submitted properties will appear here for moderation.',
+			};
 	}
 }
 
@@ -91,7 +105,12 @@ export function AdminListingList({ listings }: AdminListingListProps) {
 			</nav>
 
 			{rows.length === 0 ? (
-				<p className="py-10 text-center text-sm text-muted-foreground">{emptyMessage(tab)}</p>
+				<EmptyState
+					icon={ClipboardList}
+					title={emptyCopy(tab).title}
+					description={emptyCopy(tab).description}
+					className="py-16"
+				/>
 			) : (
 				<div className="overflow-x-auto rounded-xl border border-border">
 					<table className="w-full min-w-[48rem] text-left text-sm">
