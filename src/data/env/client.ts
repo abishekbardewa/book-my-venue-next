@@ -1,7 +1,12 @@
 import { createEnv } from '@t3-oss/env-nextjs';
+import { z } from 'zod';
 
 export const env = createEnv({
-	client: {},
+	client: {
+		NEXT_PUBLIC_RAZORPAY_KEY_ID: z.string().min(1),
+	},
 	emptyStringAsUndefined: true,
-	experimental__runtimeEnv: {},
+	experimental__runtimeEnv: {
+		NEXT_PUBLIC_RAZORPAY_KEY_ID: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+	},
 });

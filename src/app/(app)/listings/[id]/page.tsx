@@ -4,6 +4,7 @@ import {
 	getApprovedListingById,
 	listApprovedListingIds,
 } from '@/features/properties/db';
+import { getCurrentUser } from '@/features/users/getCurrentUser';
 import { ListingDetailView } from '@/components/listings/ListingDetailView';
 
 type ListingPageProps = {
@@ -35,11 +36,31 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
 
 export default async function ListingDetailPage({ params }: ListingPageProps) {
 	const { id } = await params;
-	const listing = await getApprovedListingById(id);
+	const [listing, { user }] = await Promise.all([
+		getApprovedListingById(id),
+		getCurrentUser(),
+	]);
 
 	if (!listing) {
 		notFound();
 	}
 
-	return <ListingDetailView listing={listing} />;
+	return (
+		<ListingDetailView
+			listing={listing}
+			currentUser={
+				user
+					? {
+							id: user.id,
+							role: user.role,
+							firstName: user.firstName,
+							lastName: user.lastName,
+							email: user.email,
+							phone: user.phone,
+							avatar: user.avatar,
+						}
+					: null
+			}
+		/>
+	);
 }

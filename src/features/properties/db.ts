@@ -1,7 +1,8 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, or } from 'drizzle-orm';
 import { db } from '@/drizzle/db';
 import {
 	AmenityTable,
+	BookingTable,
 	PropertyImageTable,
 	PropertyTable,
 	PropertyTagTable,
@@ -174,6 +175,11 @@ export async function listOwnerProperties(ownerId: string) {
 }
 
 export async function softDeleteProperty(propertyId: string, ownerId: string) {
+	const blocked = await propertyHasActiveBookings(propertyId);
+	if (blocked) {
+		return null;
+	}
+
 	const [property] = await db
 		.update(PropertyTable)
 		.set({ isDeleted: true })
@@ -204,6 +210,11 @@ export async function restoreProperty(propertyId: string, ownerId: string) {
 }
 
 export async function hardDeleteProperty(propertyId: string, ownerId: string) {
+	const blocked = await propertyHasActiveBookings(propertyId);
+	if (blocked) {
+		return false;
+	}
+
 	const [existing] = await db
 		.select({ id: PropertyTable.id })
 		.from(PropertyTable)
@@ -225,6 +236,23 @@ export async function hardDeleteProperty(propertyId: string, ownerId: string) {
 	await db.delete(PropertyImageTable).where(eq(PropertyImageTable.propertyId, propertyId));
 	await db.delete(PropertyTable).where(eq(PropertyTable.id, propertyId));
 	return true;
+}
+
+async function propertyHasActiveBookings(propertyId: string) {
+	const [active] = await db
+		.select({ id: BookingTable.id })
+		.from(BookingTable)
+		.where(
+			and(
+				eq(BookingTable.propertyId, propertyId),
+				inArray(BookingTable.bookingStatus, [
+					'AWAITING_OWNER_APPROVAL',
+					'CONFIRMED',
+				])
+			)
+		)
+		.limit(1);
+	return Boolean(active);
 }
 
 const approvedFilter = and(
@@ -315,6 +343,15 @@ async function attachListingRelations(
 			ownerName: owner
 				? ownerDisplayName(owner.firstName, owner.lastName, owner.email)
 				: 'Owner',
+			ownerFirstName: owner?.firstName ?? null,
+			ownerLastName: owner?.lastName ?? null,
+			ownerId: property.ownerId,
+			ownerEmail: owner?.email ?? '',
+			ownerPhone: owner?.phone ?? null,
+			ownerAvatar: owner?.avatar ?? null,
+			checkInTime: property.checkInTime,
+			checkOutTime: property.checkOutTime,
+			blockingBookings: [],
 			reviews: [],
 		};
 	});
@@ -342,7 +379,40 @@ export async function getApprovedListingById(id: string): Promise<PublicListing 
 	}
 
 	const [listing] = await attachListingRelations([property]);
-	return listing ?? null;
+	if (!listing) {
+		return null;
+	}
+
+	// Calendar uses the same active statuses as the server overlap rule.
+	const blockingBookings = await db
+		.select({
+			startDate: BookingTable.startDate,
+			endDate: BookingTable.endDate,
+		})
+		.from(BookingTable)
+		.where(
+			and(
+				eq(BookingTable.propertyId, id),
+				or(
+					inArray(BookingTable.bookingStatus, [
+						'CONFIRMED',
+						'AWAITING_OWNER_APPROVAL',
+					]),
+					and(
+						eq(BookingTable.bookingStatus, 'PENDING'),
+						gt(BookingTable.holdExpiresAt, new Date())
+					)
+				)
+			)
+		);
+
+	return {
+		...listing,
+		blockingBookings: blockingBookings.map((booking) => ({
+			startDate: booking.startDate.toISOString(),
+			endDate: booking.endDate.toISOString(),
+		})),
+	};
 }
 
 const moderationFilter = and(

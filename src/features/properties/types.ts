@@ -13,6 +13,19 @@ export type PublicListing = {
 	capacity: number;
 	amenities: string[];
 	ownerName: string;
+	ownerFirstName: string | null;
+	ownerLastName: string | null;
+	ownerId: string;
+	ownerEmail: string;
+	ownerPhone: string | null;
+	ownerAvatar: string | null;
+	checkInTime: string;
+	checkOutTime: string;
+	/** Booking ranges that block the calendar (old property.detail include). */
+	blockingBookings: {
+		startDate: string;
+		endDate: string;
+	}[];
 	reviews: {
 		id: string;
 		fullName: string;

@@ -15,6 +15,27 @@
       "when": 1786471547009,
       "tag": "0001_add_properties",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786781586749,
+      "tag": "0002_outstanding_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786805394436,
+      "tag": "0003_durable_booking_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786823873922,
+      "tag": "0004_booking_status_reason",
+      "breakpoints": true
     }
   ]
 }

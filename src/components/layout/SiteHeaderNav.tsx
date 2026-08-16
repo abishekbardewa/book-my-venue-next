@@ -21,6 +21,15 @@ function isOwnerPropertyPath(pathname: string) {
 
 function linksForRole(role: AppUserRole): NavItem[] {
 	switch (role) {
+		case 'CUSTOMER':
+			return [
+				{
+					href: '/bookings',
+					label: 'Bookings',
+					icon: CalendarDays,
+					match: (pathname) => pathname.startsWith('/bookings'),
+				},
+			];
 		case 'OWNER':
 			return [
 				{

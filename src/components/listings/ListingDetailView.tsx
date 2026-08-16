@@ -7,9 +7,18 @@ import { ListingReservationCard } from '@/components/listings/ListingReservation
 
 type ListingDetailViewProps = {
 	listing: PublicListing;
+	currentUser: {
+		id: string;
+		role: 'CUSTOMER' | 'OWNER' | 'PLATFORM_ADMIN';
+		firstName: string | null;
+		lastName: string | null;
+		email: string;
+		phone: string | null;
+		avatar: string | null;
+	} | null;
 };
 
-export function ListingDetailView({ listing }: ListingDetailViewProps) {
+export function ListingDetailView({ listing, currentUser }: ListingDetailViewProps) {
 	return (
 		<div className="page-container space-y-8 py-8">
 			<div className="space-y-3">
@@ -93,7 +102,7 @@ export function ListingDetailView({ listing }: ListingDetailViewProps) {
 
 				<div className="order-first md:order-last md:col-span-3">
 					<div className="md:sticky md:top-24">
-						<ListingReservationCard listing={listing} />
+						<ListingReservationCard listing={listing} currentUser={currentUser} />
 					</div>
 				</div>
 			</div>
