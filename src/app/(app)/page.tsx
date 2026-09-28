@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { HomeBrowse } from '@/components/home/HomeBrowse';
-import { HomeHero } from '@/components/home/HomeHero';
-import { listApprovedVenues } from '@/features/properties/db';
+import { listApprovedListings } from '@/features/properties/db';
 
 export const metadata: Metadata = {
 	title: 'Book My Venue',
@@ -14,12 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-	const venues = await listApprovedVenues();
+	const listings = await listApprovedListings();
 
-	return (
-		<>
-			<HomeHero />
-			<HomeBrowse venues={venues} />
-		</>
-	);
+	return <HomeBrowse listings={listings} />;
 }

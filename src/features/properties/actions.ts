@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { notifyListingPendingReview } from '@/features/notifications/emit';
+import { ownerHasActivePayouts } from '@/features/payments/payouts';
 import {
 	createProperty,
 	getOwnerProperty,
@@ -10,6 +12,7 @@ import {
 	softDeleteProperty,
 	updateProperty,
 } from '@/features/properties/db';
+import { canResubmitRejectedListing } from '@/features/properties/rejectionReasons';
 import {
 	propertyDraftSchema,
 	propertySubmitSchema,
@@ -34,8 +37,15 @@ async function requireOwner() {
 	return { error: null, userId, user };
 }
 
+function requireActivePayouts(user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>['user']>) {
+	if (!ownerHasActivePayouts(user)) {
+		return 'Set up payouts before listing a property';
+	}
+	return null;
+}
+
 function toFieldErrors(error: {
-	issues: { path: (string | number)[]; message: string }[];
+	issues: { path: PropertyKey[]; message: string }[];
 }): Partial<Record<string, string>> {
 	const fieldErrors: Partial<Record<string, string>> = {};
 	for (const issue of error.issues) {
@@ -51,8 +61,13 @@ export async function savePropertyDraftAction(
 	values: PropertyFormValues
 ): Promise<PropertyActionState> {
 	const auth = await requireOwner();
-	if (auth.error || !auth.userId) {
+	if (auth.error || !auth.userId || !auth.user) {
 		return { error: auth.error ?? 'Sign in to continue' };
+	}
+
+	const payoutError = requireActivePayouts(auth.user);
+	if (payoutError && !values.id) {
+		return { error: payoutError };
 	}
 
 	const parsed = propertyDraftSchema.safeParse(values);
@@ -60,18 +75,25 @@ export async function savePropertyDraftAction(
 		return { fieldErrors: toFieldErrors(parsed.error) };
 	}
 
-	const payload = {
-		...parsed.data,
-		isDraft: true as const,
-		listingStatus: null,
-	};
-
 	try {
 		if (parsed.data.id) {
 			const existing = await getOwnerProperty(parsed.data.id, auth.userId);
 			if (!existing || existing.isDeleted) {
 				return { error: 'Property not found' };
 			}
+
+			const payload = existing.listingStatus
+				? {
+						...parsed.data,
+						isDraft: existing.isDraft,
+						listingStatus: existing.listingStatus,
+					}
+				: {
+						...parsed.data,
+						isDraft: true as const,
+						listingStatus: null,
+					};
+
 			const updated = await updateProperty(parsed.data.id, auth.userId, payload);
 			if (!updated) {
 				return { error: 'Could not save draft' };
@@ -81,7 +103,11 @@ export async function savePropertyDraftAction(
 			return { propertyId: updated.id };
 		}
 
-		const created = await createProperty(auth.userId, payload);
+		const created = await createProperty(auth.userId, {
+			...parsed.data,
+			isDraft: true,
+			listingStatus: null,
+		});
 		revalidatePath('/owner');
 		return { propertyId: created.id };
 	} catch {
@@ -93,8 +119,13 @@ export async function submitPropertyForReviewAction(
 	values: PropertyFormValues
 ): Promise<PropertyActionState> {
 	const auth = await requireOwner();
-	if (auth.error || !auth.userId) {
+	if (auth.error || !auth.userId || !auth.user) {
 		return { error: auth.error ?? 'Sign in to continue' };
+	}
+
+	const payoutError = requireActivePayouts(auth.user);
+	if (payoutError) {
+		return { error: payoutError };
 	}
 
 	const parsed = propertySubmitSchema.safeParse(values);
@@ -106,6 +137,7 @@ export async function submitPropertyForReviewAction(
 		...parsed.data,
 		isDraft: false as const,
 		listingStatus: 'PENDING_REVIEW' as const,
+		markSubmittedForReview: true as const,
 	};
 
 	try {
@@ -114,15 +146,33 @@ export async function submitPropertyForReviewAction(
 			if (!existing || existing.isDeleted) {
 				return { error: 'Property not found' };
 			}
+			if (
+				existing.listingStatus === 'REJECTED' &&
+				!canResubmitRejectedListing(existing.listingAllowsResubmit)
+			) {
+				return {
+					error: 'This listing was permanently rejected and cannot be resubmitted',
+				};
+			}
 			const updated = await updateProperty(parsed.data.id, auth.userId, payload);
 			if (!updated) {
 				return { error: 'Could not submit property' };
+			}
+			try {
+				await notifyListingPendingReview(updated.id);
+			} catch (notifyError) {
+				console.error('Could not notify listing pending review:', notifyError);
 			}
 			revalidatePath('/owner');
 			redirect('/owner');
 		}
 
-		await createProperty(auth.userId, payload);
+		const created = await createProperty(auth.userId, payload);
+		try {
+			await notifyListingPendingReview(created.id);
+		} catch (notifyError) {
+			console.error('Could not notify listing pending review:', notifyError);
+		}
 		revalidatePath('/owner');
 		redirect('/owner');
 	} catch (error) {
@@ -133,46 +183,41 @@ export async function submitPropertyForReviewAction(
 	}
 }
 
-export async function archivePropertyAction(propertyId: string): Promise<PropertyActionState> {
+export async function archivePropertyAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const property = await softDeleteProperty(propertyId, auth.userId);
 	if (!property) {
-		return { error: 'Property not found' };
+		return;
 	}
 	revalidatePath('/owner');
-	return { propertyId: property.id };
 }
 
-export async function restorePropertyAction(propertyId: string): Promise<PropertyActionState> {
+export async function restorePropertyAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const property = await restoreProperty(propertyId, auth.userId);
 	if (!property) {
-		return { error: 'Property not found' };
+		return;
 	}
 	revalidatePath('/owner');
-	return { propertyId: property.id };
 }
 
-export async function deletePropertyForeverAction(
-	propertyId: string
-): Promise<PropertyActionState> {
+export async function deletePropertyForeverAction(propertyId: string): Promise<void> {
 	const auth = await requireOwner();
 	if (auth.error || !auth.userId) {
-		return { error: auth.error ?? 'Sign in to continue' };
+		return;
 	}
 
 	const deleted = await hardDeleteProperty(propertyId, auth.userId);
 	if (!deleted) {
-		return { error: 'Only archived properties can be permanently deleted' };
+		return;
 	}
 	revalidatePath('/owner');
-	return {};
 }

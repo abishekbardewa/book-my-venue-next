@@ -1,0 +1,36 @@
+import { NextResponse } from 'next/server';
+import { BOOKING_STATUSES, type BookingStatus } from '@/features/bookings/constants';
+import { listOwnerBookings } from '@/features/bookings/db';
+import { getCurrentUser } from '@/features/users/getCurrentUser';
+
+export async function GET(request: Request) {
+	const { userId, user } = await getCurrentUser();
+	if (!userId || !user) {
+		return NextResponse.json({ error: 'Sign in to continue' }, { status: 401 });
+	}
+	if (user.role !== 'OWNER') {
+		return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+	}
+
+	const searchParams = new URL(request.url).searchParams;
+	const requestedStatus = searchParams.get('status') ?? 'ALL';
+	const status =
+		requestedStatus === 'ALL'
+			? 'ALL'
+			: BOOKING_STATUSES.includes(requestedStatus as BookingStatus)
+				? (requestedStatus as BookingStatus)
+				: 'ALL';
+	const page = Math.max(Number(searchParams.get('page')) || 1, 1);
+	const limit = Math.max(Number(searchParams.get('limit')) || 6, 1);
+	const result = await listOwnerBookings({ ownerId: userId, status, page, limit });
+
+	return NextResponse.json({
+		message: 'success',
+		data: result.bookings,
+		status: 200,
+		success: true,
+		totalCount: result.totalCount,
+		page,
+		limit,
+	});
+}

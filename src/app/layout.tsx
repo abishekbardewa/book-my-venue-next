@@ -1,13 +1,18 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Hanken_Grotesk, Syne } from 'next/font/google';
 import { AppProviders } from '@/components/providers/AppProviders';
-import { SiteFooter } from '@/components/layout/SiteFooter';
-import { SiteHeader } from '@/components/layout/SiteHeader';
 import './globals.css';
 
-const fontSans = Inter({
+const fontSans = Hanken_Grotesk({
 	subsets: ['latin'],
 	variable: '--font-sans',
+	weight: ['400', '500', '600'],
+});
+
+const fontHeadline = Syne({
+	subsets: ['latin'],
+	variable: '--font-headline',
+	weight: ['600', '700', '800'],
 });
 
 export const metadata: Metadata = {
@@ -23,13 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 		<html lang="en" suppressHydrationWarning>
 			<body
 				suppressHydrationWarning
-				className={`${fontSans.variable} flex min-h-dvh flex-col font-sans antialiased`}
+				className={`${fontSans.variable} ${fontHeadline.variable} flex min-h-dvh flex-col font-sans antialiased`}
 			>
-				<AppProviders>
-					<SiteHeader />
-					<main className="flex-1">{children}</main>
-					<SiteFooter />
-				</AppProviders>
+				<AppProviders>{children}</AppProviders>
 			</body>
 		</html>
 	);

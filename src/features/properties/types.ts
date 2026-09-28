@@ -1,4 +1,4 @@
-export type PublicVenue = {
+export type PublicListing = {
 	id: string;
 	propertyName: string;
 	city: string;
@@ -8,19 +8,44 @@ export type PublicVenue = {
 	tags: string[];
 	images: string[];
 	address: string;
+	lat: string | null;
+	lng: string | null;
 	description: string;
 	extraInfo: string;
 	capacity: number;
 	amenities: string[];
 	ownerName: string;
+	ownerFirstName: string | null;
+	ownerLastName: string | null;
+	ownerId: string;
+	ownerEmail: string;
+	ownerPhone: string | null;
+	ownerAvatar: string | null;
+	checkInTime: string;
+	checkOutTime: string;
+	blockingBookings: {
+		startDate: string;
+		endDate: string;
+	}[];
 	reviews: {
 		id: string;
 		fullName: string;
+		avatar: string | null;
 		rating: number;
 		review: string;
 		createdAt: string;
 	}[];
 };
 
-export const VENUE_IMAGE_PLACEHOLDER =
+export type AdminListingDetail = PublicListing & {
+	listingStatus: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | null;
+	ownerEmail: string;
+	listingRejectionReason: string | null;
+	listingRejectionReasonCode: string | null;
+	listingAllowsResubmit: boolean | null;
+	listingSubmissionCount: number;
+	listingReviewedAt: string | null;
+};
+
+export const LISTING_IMAGE_PLACEHOLDER =
 	'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80';

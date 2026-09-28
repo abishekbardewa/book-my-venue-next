@@ -16,13 +16,13 @@ export function PasswordInput({ className, containerClassName, ...props }: Passw
 		<div className={cn('relative', containerClassName)}>
 			<Input
 				type={visible ? 'text' : 'password'}
-				className={cn('pr-10', className)}
+				className={cn(className, 'pr-11')}
 				{...props}
 			/>
 			<button
 				type="button"
 				onClick={() => setVisible((value) => !value)}
-				className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+				className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
 				aria-label={visible ? 'Hide password' : 'Show password'}
 			>
 				{visible ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}

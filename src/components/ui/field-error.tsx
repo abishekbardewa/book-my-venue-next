@@ -10,5 +10,5 @@ export function FieldError({ message, className }: FieldErrorProps) {
 		return null;
 	}
 
-	return <p className={cn('text-[11px] text-destructive', className)}>{message}</p>;
+	return <p className={cn('text-xs text-destructive', className)}>{message}</p>;
 }

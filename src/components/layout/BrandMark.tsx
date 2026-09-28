@@ -1,4 +1,3 @@
-import { MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type BrandMarkProps = {
@@ -8,29 +7,22 @@ type BrandMarkProps = {
 };
 
 export function BrandMark({ className, showWordmark = true, size = 'md' }: BrandMarkProps) {
-	const box = size === 'sm' ? 'size-8 rounded-lg' : 'size-10 rounded-xl';
-	const icon = size === 'sm' ? 'size-4' : 'size-5';
+	const wordmark =
+		size === 'sm'
+			? 'font-headline text-xl font-bold tracking-tighter sm:text-2xl'
+			: 'font-headline text-2xl font-bold tracking-tighter sm:text-3xl';
 
 	return (
-		<span className={cn('inline-flex items-center gap-2.5', className)}>
-			<span
-				className={cn(
-					'inline-flex shrink-0 items-center justify-center bg-primary text-primary-foreground shadow-sm',
-					box
-				)}
-			>
-				<MapPin className={cn(icon, 'fill-current')} aria-hidden />
-			</span>
+		<span className={cn('inline-flex items-center gap-2', className)}>
 			{showWordmark ? (
-				<span className="flex min-w-0 flex-col leading-tight">
-					<span className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-						Book My Venue
-					</span>
-					<span className="text-[11px] font-medium tracking-wide text-muted-foreground sm:text-xs">
-						Event spaces near you
-					</span>
+				<span className={cn('text-foreground uppercase', wordmark)}>
+					BookMy<span className="text-primary">Venue</span>
 				</span>
-			) : null}
+			) : (
+				<span className={cn('text-foreground', wordmark)} aria-hidden>
+					BMV
+				</span>
+			)}
 		</span>
 	);
 }

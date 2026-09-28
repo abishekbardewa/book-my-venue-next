@@ -41,7 +41,7 @@ export function DatePicker({
 					{date ? format(date, 'PPP') : placeholder}
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className="w-auto overflow-hidden rounded-xl p-0" align="start">
+			<PopoverContent className="w-auto overflow-hidden rounded-none p-0" align="start">
 				<Calendar mode="single" selected={date} onSelect={onSelect} disabled={disabled} />
 			</PopoverContent>
 		</Popover>

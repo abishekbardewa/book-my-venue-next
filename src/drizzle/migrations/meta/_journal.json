@@ -15,6 +15,62 @@
       "when": 1786471547009,
       "tag": "0001_add_properties",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786781586749,
+      "tag": "0002_outstanding_thunderbird",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786805394436,
+      "tag": "0003_durable_booking_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786823873922,
+      "tag": "0004_booking_status_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786886971222,
+      "tag": "0005_add_razorpay_route_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786960513903,
+      "tag": "0006_add_imagekit_file_ids",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786963200000,
+      "tag": "0007_add_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787727116722,
+      "tag": "0008_add_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787900000000,
+      "tag": "0009_listing_resubmit",
+      "breakpoints": true
     }
   ]
 }
