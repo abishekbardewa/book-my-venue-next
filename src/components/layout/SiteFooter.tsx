@@ -10,15 +10,15 @@ export function SiteFooter() {
 	const year = new Date().getFullYear();
 
 	return (
-		<footer className="mt-auto bg-secondary/70">
-			<div className="page-container-wide flex flex-col gap-3 py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-				<p>© {year} BookMyVenue. All Rights Reserved.</p>
-				<nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label="Legal">
+		<footer className="mt-auto border-t border-structural-border bg-card">
+			<div className="page-container-wide flex flex-col gap-4 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+				<p className="font-sans">© {year} BookMyVenue. All Rights Reserved.</p>
+				<nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label="Legal">
 					{legalLinks.map((link) => (
 						<Link
 							key={link.href}
 							href={link.href}
-							className="transition-colors hover:text-foreground"
+							className="label-caps text-muted-foreground transition-colors hover:text-foreground"
 						>
 							{link.label}
 						</Link>

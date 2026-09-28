@@ -2,9 +2,18 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+	notifyListingApproved,
+	notifyListingRejected,
+} from '@/features/notifications/emit';
+import {
 	approvePropertyListing,
 	rejectPropertyListing,
 } from '@/features/properties/db';
+import {
+	formatListingRejectionMessage,
+	getListingRejectionReason,
+	type ListingRejectionReasonCode,
+} from '@/features/properties/rejectionReasons';
 import { getCurrentUser } from '@/features/users/getCurrentUser';
 
 async function requirePlatformAdmin() {
@@ -24,7 +33,17 @@ export async function approveListingAction(propertyId: string): Promise<void> {
 		return;
 	}
 
-	await approvePropertyListing(propertyId, auth.userId);
+	const property = await approvePropertyListing(propertyId, auth.userId);
+	if (!property) {
+		return;
+	}
+
+	try {
+		await notifyListingApproved(propertyId);
+	} catch (error) {
+		console.error('Could not notify listing approved:', error);
+	}
+
 	revalidatePath('/admin');
 	revalidatePath(`/admin/listings/${propertyId}`);
 	revalidatePath(`/listings/${propertyId}`);
@@ -40,14 +59,39 @@ export async function rejectListingAction(
 		return;
 	}
 
-	const reason = String(formData.get('reason') ?? '').trim();
+	const reasonCode = String(formData.get('reasonCode') ?? '').trim();
+	const note = String(formData.get('reasonNote') ?? '').trim();
+	const reason = getListingRejectionReason(reasonCode);
 	if (!reason) {
 		return;
 	}
+	if (reason.code === 'OTHER' && !note) {
+		return;
+	}
 
-	await rejectPropertyListing(propertyId, auth.userId, reason);
+	const displayReason = formatListingRejectionMessage(
+		reason.code as ListingRejectionReasonCode,
+		note
+	);
+
+	const property = await rejectPropertyListing(propertyId, auth.userId, {
+		reasonCode: reason.code,
+		reason: displayReason,
+		allowsResubmit: reason.allowsResubmit,
+	});
+	if (!property) {
+		return;
+	}
+
+	try {
+		await notifyListingRejected(propertyId, displayReason);
+	} catch (error) {
+		console.error('Could not notify listing rejected:', error);
+	}
+
 	revalidatePath('/admin');
 	revalidatePath(`/admin/listings/${propertyId}`);
 	revalidatePath(`/listings/${propertyId}`);
+	revalidatePath('/owner');
 	revalidatePath('/');
 }

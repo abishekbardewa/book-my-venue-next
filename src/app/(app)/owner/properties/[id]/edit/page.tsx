@@ -26,8 +26,14 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
 	}
 
 	return (
-		<section className="page-container py-10">
+		<section className="page-container-wide py-10 sm:py-14">
 			<PropertyForm
+				listingMeta={{
+					listingStatus: property.listingStatus,
+					listingRejectionReason: property.listingRejectionReason,
+					listingAllowsResubmit: property.listingAllowsResubmit,
+					listingSubmissionCount: property.listingSubmissionCount,
+				}}
 				initialValues={{
 					id: property.id,
 					propertyName: property.propertyName,
@@ -40,9 +46,18 @@ export default async function EditPropertyPage({ params }: EditPropertyPageProps
 					city: property.city ?? '',
 					country: property.country ?? 'India',
 					pincode: property.pincode ?? '',
+					lat: property.lat ?? '',
+					lng: property.lng ?? '',
 					extraInfo: property.extraInfo ?? '',
 					tags: property.tags,
 					amenities: property.amenities,
+					images: property.images.map((image) => ({
+						key: image.id,
+						previewUrl: image.imgUrl,
+						imgUrl: image.imgUrl,
+						imagekitFileId: image.imagekitFileId ?? '',
+						caption: image.caption ?? '',
+					})),
 				}}
 			/>
 		</section>

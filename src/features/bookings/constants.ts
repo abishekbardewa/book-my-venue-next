@@ -1,15 +1,7 @@
-export const BOOKING_STATUSES = [
-	'PENDING',
-	'AWAITING_OWNER_APPROVAL',
-	'FAILED',
-	'CONFIRMED',
-	'CANCELLED',
-	'COMPLETED',
-] as const;
+export const BOOKING_STATUSES = ['PENDING', 'AWAITING_OWNER_APPROVAL', 'FAILED', 'CONFIRMED', 'CANCELLED', 'COMPLETED'] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 
-/** Why a booking left the happy path (set on fail/cancel only). */
 export const BOOKING_STATUS_REASONS = [
 	'hold_expired',
 	'payment_failed',
@@ -25,10 +17,7 @@ export const PAYMENT_STATUSES = ['PENDING', 'SUCCESS', 'FAILED', 'REFUNDED'] as 
 
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const BOOKING_STATUS_MESSAGES: Record<
-	Exclude<BookingStatus, 'PENDING' | 'FAILED'>,
-	{ title: string; description: string }
-> = {
+export const BOOKING_STATUS_MESSAGES: Record<Exclude<BookingStatus, 'PENDING' | 'FAILED'>, { title: string; description: string }> = {
 	AWAITING_OWNER_APPROVAL: {
 		title: 'No bookings awaiting approval',
 		description: 'There are no bookings awaiting approval at the moment.',

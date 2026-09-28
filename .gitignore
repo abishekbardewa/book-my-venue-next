@@ -45,7 +45,7 @@ next-env.d.ts
 *.swp
 *.swo
 *~
-
+._*
 .DS_Store
 Thumbs.db
 Desktop.ini

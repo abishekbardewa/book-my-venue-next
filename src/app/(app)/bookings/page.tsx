@@ -14,7 +14,7 @@ export default async function CustomerBookingsPage() {
 	if (user.role !== 'CUSTOMER') redirect('/');
 
 	return (
-		<section className="page-container py-10">
+		<section className="page-container-wide py-10 sm:py-14">
 			<CustomerBookings />
 		</section>
 	);

@@ -1,22 +1,11 @@
-import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { ProfileSettings } from '@/features/users/components/ProfileSettings';
-import { getCurrentUser } from '@/features/users/getCurrentUser';
 
-export const metadata: Metadata = {
-	title: 'Profile',
-	robots: { index: false, follow: false },
+type ProfileRedirectPageProps = {
+	searchParams: Promise<{ tab?: string }>;
 };
 
-export default async function ProfilePage() {
-	const { user } = await getCurrentUser();
-	if (!user) {
-		redirect('/sign-in');
-	}
-
-	return (
-		<section className="page-container py-10">
-			<ProfileSettings user={user} />
-		</section>
-	);
+export default async function ProfileRedirectPage({ searchParams }: ProfileRedirectPageProps) {
+	const params = await searchParams;
+	const tab = params.tab ? `?tab=${encodeURIComponent(params.tab)}` : '';
+	redirect(`/settings${tab}`);
 }

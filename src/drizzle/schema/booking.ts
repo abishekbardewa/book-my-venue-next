@@ -24,7 +24,6 @@ export const BookingTable = pgTable('bookings', {
 	startDate: timestamp({ withTimezone: true }).notNull(),
 	endDate: timestamp({ withTimezone: true }).notNull(),
 	bookingStatus: bookingStatusEnum().notNull().default('PENDING'),
-	/** Short code for fail/cancel cause; null on happy-path statuses. */
 	statusReason: varchar({ length: 64 }),
 	totalAmount: numeric({ precision: 12, scale: 2 }).notNull().default('0'),
 	currency: varchar({ length: 3 }).notNull().default('INR'),
@@ -45,9 +44,11 @@ export const PaymentTable = pgTable('payments', {
 	amount: numeric({ precision: 12, scale: 2 }).notNull(),
 	currency: varchar({ length: 3 }).notNull().default('INR'),
 	status: paymentStatusEnum().notNull().default('PENDING'),
-	// Nullable only so existing parity payment rows can migrate; all new rows set it.
 	razorpayOrderId: varchar().unique(),
 	transactionId: varchar().unique(),
+	platformFee: numeric({ precision: 12, scale: 2 }),
+	ownerShare: numeric({ precision: 12, scale: 2 }),
+	razorpayTransferId: varchar().unique(),
 	bookingId: uuid()
 		.notNull()
 		.unique()

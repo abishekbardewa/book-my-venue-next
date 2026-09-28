@@ -1,191 +1,335 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { ImageIcon, MapPin } from 'lucide-react';
 import {
 	archivePropertyAction,
 	deletePropertyForeverAction,
 	restorePropertyAction,
 } from '@/features/properties/actions';
-import { Building2 } from 'lucide-react';
-import type { PropertyRow } from '@/features/properties/db';
+import { PROPERTY_CATEGORIES } from '@/features/properties/constants';
+import type { OwnerPropertyListItem } from '@/features/properties/db';
+import { canResubmitRejectedListing } from '@/features/properties/rejectionReasons';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { cn } from '@/lib/utils';
 
 type OwnerPropertyListProps = {
-	properties: PropertyRow[];
+	properties: OwnerPropertyListItem[];
 };
 
-type TabKey = 'all' | 'listings' | 'draft' | 'archive';
+type StatusFilter = 'all' | 'draft' | 'pending' | 'approved' | 'rejected' | 'archive';
 
-const TABS: { key: TabKey; label: string }[] = [
-	{ key: 'all', label: 'All' },
-	{ key: 'listings', label: 'Listings' },
-	{ key: 'draft', label: 'Draft' },
-	{ key: 'archive', label: 'Archive' },
+const PAGE_SIZE = 20;
+const STATUS_TABS: { status: StatusFilter; label: string }[] = [
+	{ status: 'all', label: 'All' },
+	{ status: 'pending', label: 'Pending' },
+	{ status: 'approved', label: 'Approved' },
+	{ status: 'rejected', label: 'Rejected' },
+	{ status: 'draft', label: 'Draft' },
+	{ status: 'archive', label: 'Archived' },
 ];
 
-function statusLabel(property: PropertyRow) {
+function statusMeta(property: OwnerPropertyListItem) {
 	if (property.isDeleted) {
-		return 'Archived';
+		return {
+			key: 'archive' as const,
+			label: 'Archived',
+			className: 'border-structural-border bg-secondary/50 text-muted-foreground',
+		};
 	}
 	if (property.isDraft) {
-		return 'Draft';
+		return {
+			key: 'draft' as const,
+			label: 'Draft',
+			className: 'border-structural-border bg-secondary/50 text-muted-foreground',
+		};
 	}
 	switch (property.listingStatus) {
 		case 'PENDING_REVIEW':
-			return 'Pending review';
+			return {
+				key: 'pending' as const,
+				label: 'Pending',
+				className: 'border-primary/30 bg-secondary text-foreground',
+			};
 		case 'APPROVED':
-			return 'Approved';
+			return {
+				key: 'approved' as const,
+				label: 'Approved',
+				className: 'border-emerald-600/30 bg-emerald-600/10 text-emerald-800',
+			};
 		case 'REJECTED':
-			return 'Rejected';
+			return {
+				key: 'rejected' as const,
+				label: 'Rejected',
+				className: 'border-destructive/30 bg-destructive/10 text-destructive',
+			};
 		default:
-			return 'Submitted';
+			return {
+				key: 'pending' as const,
+				label: 'Submitted',
+				className: 'border-structural-border bg-secondary/50 text-muted-foreground',
+			};
 	}
 }
 
-function filterByTab(properties: PropertyRow[], tab: TabKey) {
-	switch (tab) {
-		case 'listings':
-			return properties.filter((property) => !property.isDeleted && !property.isDraft);
-		case 'draft':
-			return properties.filter((property) => !property.isDeleted && property.isDraft);
-		case 'archive':
-			return properties.filter((property) => property.isDeleted);
-		default:
-			return properties;
-	}
+function categoryLabel(tags: string[]) {
+	if (tags.length === 0) return '—';
+	return tags
+		.map(
+			(tag) =>
+				PROPERTY_CATEGORIES.find((category) => category.tagName === tag)?.label ?? tag
+		)
+		.join(' / ');
 }
 
-function emptyCopy(tab: TabKey) {
-	switch (tab) {
-		case 'listings':
-			return {
-				title: 'No listings yet',
-				description: 'Submit a property for review to see it here.',
-			};
-		case 'draft':
-			return {
-				title: 'No drafts yet',
-				description: 'Saved drafts will appear in this tab.',
-			};
-		case 'archive':
-			return {
-				title: 'No archived properties',
-				description: 'Archived properties will show up here.',
-			};
-		default:
-			return {
-				title: 'No properties yet',
-				description: 'Add your first property to get started.',
-			};
-	}
+function formatUpdated(value: Date | string) {
+	const date = value instanceof Date ? value : new Date(value);
+	return new Intl.DateTimeFormat('en-IN', {
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+	}).format(date);
+}
+
+function matchesFilter(property: OwnerPropertyListItem, filter: StatusFilter) {
+	const meta = statusMeta(property);
+	if (filter === 'all') return !property.isDeleted;
+	if (filter === 'archive') return property.isDeleted;
+	return meta.key === filter && !property.isDeleted;
 }
 
 export function OwnerPropertyList({ properties }: OwnerPropertyListProps) {
-	const [tab, setTab] = useState<TabKey>('all');
-	const rows = filterByTab(properties, tab);
+	const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+	const [page, setPage] = useState(1);
+
+	const rows = useMemo(
+		() => properties.filter((property) => matchesFilter(property, statusFilter)),
+		[properties, statusFilter]
+	);
+
+	const totalPages = Math.max(Math.ceil(rows.length / PAGE_SIZE), 1);
+	const currentPage = Math.min(page, totalPages);
+	const pagedRows = useMemo(() => {
+		const start = (currentPage - 1) * PAGE_SIZE;
+		return rows.slice(start, start + PAGE_SIZE);
+	}, [currentPage, rows]);
 
 	return (
-		<div className="space-y-4">
-			<nav aria-label="Property filters" className="border-b border-border">
-				<ul className="flex gap-1 overflow-x-auto">
-					{TABS.map((item) => {
-						const active = tab === item.key;
-						return (
-							<li key={item.key} className="shrink-0">
-								<button
-									type="button"
-									onClick={() => setTab(item.key)}
-									className={cn(
-										'px-3 py-2 text-sm transition-colors',
-										active
-											? 'border-b-2 border-foreground font-semibold text-foreground'
-											: 'border-b-2 border-transparent text-muted-foreground hover:text-foreground'
-									)}
-								>
-									{item.label}
-								</button>
-							</li>
-						);
-					})}
-				</ul>
+		<div className="space-y-6">
+			<nav
+				className="flex flex-nowrap gap-2 overflow-x-auto pb-1"
+				aria-label="Listing status"
+			>
+				{STATUS_TABS.map((tab) => {
+					const active = statusFilter === tab.status;
+					return (
+						<button
+							key={tab.status}
+							type="button"
+							onClick={() => {
+								setStatusFilter(tab.status);
+								setPage(1);
+							}}
+							className={cn(
+								'shrink-0 border px-4 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition-colors',
+								active
+									? 'border-foreground bg-foreground text-background'
+									: 'border-structural-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground'
+							)}
+						>
+							{tab.label}
+						</button>
+					);
+				})}
 			</nav>
 
 			{rows.length === 0 ? (
-				<EmptyState
-					icon={Building2}
-					title={emptyCopy(tab).title}
-					description={emptyCopy(tab).description}
-					className="py-16"
-				/>
+				<div className="border border-structural-border bg-card">
+					<EmptyState
+						icon={ImageIcon}
+						title={statusFilter !== 'all' ? 'No matches' : 'No venues yet'}
+						description={
+							statusFilter !== 'all'
+								? 'No listings in this status.'
+								: 'Add your first listing to get started.'
+						}
+						className="py-16"
+					/>
+				</div>
 			) : (
-				<div className="overflow-x-auto rounded-xl border border-border">
-					<table className="w-full min-w-[40rem] text-left text-sm">
-						<thead className="border-b border-border bg-secondary/40 text-muted-foreground">
-							<tr>
-								<th className="px-4 py-3 font-medium">Property</th>
-								<th className="px-4 py-3 font-medium">City</th>
-								<th className="px-4 py-3 font-medium">Status</th>
-								<th className="px-4 py-3 font-medium text-right">Actions</th>
+				<div className="overflow-x-auto border border-structural-border bg-card">
+					<table className="w-full min-w-[800px] border-collapse text-left text-sm">
+						<thead>
+							<tr className="border-b border-structural-border bg-secondary/60">
+								<th className="label-caps px-4 py-3 font-semibold text-muted-foreground">
+									Venue Name & Details
+								</th>
+								<th className="label-caps px-4 py-3 font-semibold text-muted-foreground">
+									Category
+								</th>
+								<th className="label-caps px-4 py-3 font-semibold text-muted-foreground">
+									Updated
+								</th>
+								<th className="label-caps px-4 py-3 font-semibold text-muted-foreground">
+									Status
+								</th>
+								<th className="label-caps px-4 py-3 text-right font-semibold text-muted-foreground">
+									Actions
+								</th>
 							</tr>
 						</thead>
-						<tbody>
-							{rows.map((property) => (
-								<tr key={property.id} className="border-b border-border last:border-b-0">
-									<td className="px-4 py-3 align-top">
-										<p className="font-medium text-foreground">{property.propertyName}</p>
-										{property.listingStatus === 'REJECTED' && property.listingRejectionReason ? (
-											<p className="mt-1 text-[11px] text-destructive">
-												{property.listingRejectionReason}
-											</p>
-										) : null}
-									</td>
-									<td className="px-4 py-3 align-top text-muted-foreground">
-										{property.city || '—'}
-									</td>
-									<td className="px-4 py-3 align-top text-muted-foreground">
-										{statusLabel(property)}
-									</td>
-									<td className="px-4 py-3 align-top">
-										<div className="flex flex-wrap justify-end gap-2">
-											{!property.isDeleted && (
-												<Link
-													href={`/owner/properties/${property.id}/edit`}
-													className={buttonVariants({ variant: 'outline', size: 'sm' })}
-												>
-													{property.isDraft ? 'Continue' : 'Edit'}
-												</Link>
-											)}
-											{!property.isDeleted ? (
-												<form action={archivePropertyAction.bind(null, property.id)}>
-													<Button type="submit" variant="outline" size="sm">
-														Archive
-													</Button>
-												</form>
-											) : (
-												<>
-													<form action={restorePropertyAction.bind(null, property.id)}>
-														<Button type="submit" variant="outline" size="sm">
-															Restore
-														</Button>
-													</form>
-													<form action={deletePropertyForeverAction.bind(null, property.id)}>
-														<Button type="submit" variant="destructive" size="sm">
-															Delete forever
-														</Button>
-													</form>
-												</>
-											)}
-										</div>
-									</td>
-								</tr>
-							))}
+						<tbody className="divide-y divide-structural-border">
+							{pagedRows.map((property) => {
+								const status = statusMeta(property);
+								return (
+									<tr
+										key={property.id}
+										className="group transition-colors hover:bg-secondary/50"
+									>
+										<td className="px-4 py-3">
+											<div className="flex items-center gap-4">
+												<div className="size-12 shrink-0 overflow-hidden border border-structural-border bg-muted">
+													{property.image ? (
+														// eslint-disable-next-line @next/next/no-img-element
+														<img
+															src={property.image}
+															alt=""
+															className="size-full object-cover"
+														/>
+													) : (
+														<div className="flex size-full items-center justify-center text-muted-foreground">
+															<ImageIcon className="size-4" aria-hidden />
+														</div>
+													)}
+												</div>
+												<div>
+													<p
+														className={cn(
+															'font-semibold text-foreground',
+															status.key === 'rejected' && 'opacity-50 line-through'
+														)}
+													>
+														{property.propertyName}
+													</p>
+													<p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+														<MapPin className="size-3.5 shrink-0" aria-hidden />
+														{property.city || '—'}
+													</p>
+													{status.key === 'rejected' &&
+													property.listingRejectionReason ? (
+														<p className="mt-1 max-w-xs text-[11px] text-destructive">
+															{property.listingRejectionReason}
+															{property.listingAllowsResubmit === false
+																? ' (final)'
+																: ''}
+														</p>
+													) : null}
+												</div>
+											</div>
+										</td>
+										<td className="px-4 py-3 text-muted-foreground">
+											{categoryLabel(property.tags)}
+										</td>
+										<td className="px-4 py-3 text-muted-foreground">
+											{formatUpdated(property.updatedAt)}
+										</td>
+										<td className="px-4 py-3">
+											<span
+												className={cn(
+													'inline-block border px-2 py-0.5 text-[10px] font-semibold tracking-wider uppercase',
+													status.className
+												)}
+											>
+												{status.label}
+											</span>
+										</td>
+										<td className="px-4 py-3">
+											<div className="flex justify-end gap-2">
+												{!property.isDeleted ? (
+													<>
+														{property.listingStatus === 'REJECTED' &&
+														!canResubmitRejectedListing(
+															property.listingAllowsResubmit
+														) ? (
+															<span className="inline-flex items-center px-2 text-xs text-muted-foreground">
+																Cannot resubmit
+															</span>
+														) : (
+															<Link
+																href={`/owner/properties/${property.id}/edit`}
+																className={cn(
+																	buttonVariants({
+																		variant: 'outline',
+																		size: 'sm',
+																	}),
+																	'border-primary text-ink hover:bg-primary hover:text-primary-foreground'
+																)}
+															>
+																{property.isDraft
+																	? 'Continue'
+																	: property.listingStatus === 'REJECTED'
+																		? 'Fix & resubmit'
+																		: 'Edit'}
+															</Link>
+														)}
+														<form
+															action={archivePropertyAction.bind(null, property.id)}
+														>
+															<Button type="submit" variant="outline" size="sm">
+																Archive
+															</Button>
+														</form>
+													</>
+												) : (
+													<>
+														<form
+															action={restorePropertyAction.bind(null, property.id)}
+														>
+															<Button type="submit" variant="outline" size="sm">
+																Restore
+															</Button>
+														</form>
+														<form
+															action={deletePropertyForeverAction.bind(
+																null,
+																property.id
+															)}
+														>
+															<Button type="submit" variant="destructive" size="sm">
+																Delete
+															</Button>
+														</form>
+													</>
+												)}
+											</div>
+										</td>
+									</tr>
+								);
+							})}
 						</tbody>
 					</table>
 				</div>
 			)}
+
+			{rows.length > 0 ? (
+				<>
+					<p className="text-sm text-muted-foreground">
+						Showing {(currentPage - 1) * PAGE_SIZE + 1}–
+						{Math.min(currentPage * PAGE_SIZE, rows.length)} of {rows.length}{' '}
+						{rows.length === 1 ? 'entry' : 'entries'}
+					</p>
+					<PaginationControls
+						page={currentPage}
+						totalPages={totalPages}
+						align="end"
+						className="mt-4"
+						onPageChange={setPage}
+					/>
+				</>
+			) : null}
 		</div>
 	);
 }

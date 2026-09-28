@@ -8,6 +8,8 @@ export type PublicListing = {
 	tags: string[];
 	images: string[];
 	address: string;
+	lat: string | null;
+	lng: string | null;
 	description: string;
 	extraInfo: string;
 	capacity: number;
@@ -21,7 +23,6 @@ export type PublicListing = {
 	ownerAvatar: string | null;
 	checkInTime: string;
 	checkOutTime: string;
-	/** Booking ranges that block the calendar (old property.detail include). */
 	blockingBookings: {
 		startDate: string;
 		endDate: string;
@@ -29,6 +30,7 @@ export type PublicListing = {
 	reviews: {
 		id: string;
 		fullName: string;
+		avatar: string | null;
 		rating: number;
 		review: string;
 		createdAt: string;
@@ -39,6 +41,9 @@ export type AdminListingDetail = PublicListing & {
 	listingStatus: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | null;
 	ownerEmail: string;
 	listingRejectionReason: string | null;
+	listingRejectionReasonCode: string | null;
+	listingAllowsResubmit: boolean | null;
+	listingSubmissionCount: number;
 	listingReviewedAt: string | null;
 };
 

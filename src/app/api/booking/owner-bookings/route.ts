@@ -13,10 +13,13 @@ export async function GET(request: Request) {
 	}
 
 	const searchParams = new URL(request.url).searchParams;
-	const requestedStatus = searchParams.get('status') ?? 'AWAITING_OWNER_APPROVAL';
-	const status = BOOKING_STATUSES.includes(requestedStatus as BookingStatus)
-		? (requestedStatus as BookingStatus)
-		: 'AWAITING_OWNER_APPROVAL';
+	const requestedStatus = searchParams.get('status') ?? 'ALL';
+	const status =
+		requestedStatus === 'ALL'
+			? 'ALL'
+			: BOOKING_STATUSES.includes(requestedStatus as BookingStatus)
+				? (requestedStatus as BookingStatus)
+				: 'ALL';
 	const page = Math.max(Number(searchParams.get('page')) || 1, 1);
 	const limit = Math.max(Number(searchParams.get('limit')) || 6, 1);
 	const result = await listOwnerBookings({ ownerId: userId, status, page, limit });

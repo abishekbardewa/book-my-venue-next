@@ -17,6 +17,11 @@ export type BookingListItem = {
 		price: number;
 		image: string;
 		ownerId: string;
+		city: string;
+		address: string;
+		checkInTime: string;
+		checkOutTime: string;
+		capacity: string;
 	};
 	user: {
 		id: string;
@@ -32,15 +37,17 @@ export type BookingListItem = {
 		transactionId: string | null;
 		razorpayOrderId: string | null;
 	}[];
+	review: {
+		id: string;
+		rating: number;
+		body: string;
+	} | null;
+	reviewWindowOpen: boolean;
 };
 
 export type BookingDetail = BookingListItem & {
 	property: BookingListItem['property'] & {
-		address: string;
-		city: string;
 		country: string;
-		checkInTime: string;
-		checkOutTime: string;
 	};
 	owner: {
 		id: string;

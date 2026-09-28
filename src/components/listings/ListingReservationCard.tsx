@@ -3,12 +3,13 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { format as formatDate, isSameDay } from 'date-fns';
+import type { DateRange } from 'react-day-picker';
+import { Shield, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatInr } from '@/lib/format';
 import type { PublicListing } from '@/features/properties/types';
 import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Label } from '@/components/ui/label';
+import { DateRangePicker } from '@/components/ui/date-range-picker';
 
 type ListingReservationCardProps = {
 	listing: PublicListing;
@@ -42,9 +43,11 @@ export function ListingReservationCard({
 	currentUser,
 }: ListingReservationCardProps) {
 	const router = useRouter();
-	const [startDate, setStartDate] = useState<Date>();
-	const [endDate, setEndDate] = useState<Date>();
+	const [range, setRange] = useState<DateRange | undefined>();
 	const [saving, setSaving] = useState(false);
+
+	const startDate = range?.from;
+	const endDate = range?.to;
 
 	const disabledDates = useMemo(() => {
 		return listing.blockingBookings.flatMap((booking) =>
@@ -52,21 +55,49 @@ export function ListingReservationCard({
 		);
 	}, [listing.blockingBookings]);
 
+	const canBook = currentUser?.role === 'CUSTOMER';
+	const bookingLocked = Boolean(currentUser && !canBook);
+
 	const isDisabledDate = (date: Date) => {
+		if (bookingLocked) return true;
 		const today = new Date();
 		today.setHours(0, 0, 0, 0);
 		if (date < today) return true;
 		return disabledDates.some((disabled) => isSameDay(disabled, date));
 	};
 
+	const rangeIncludesBlocked = (from: Date, to: Date) => {
+		return getDatesBetween(from, to).some((date) =>
+			disabledDates.some((disabled) => isSameDay(disabled, date))
+		);
+	};
+
 	const days = useMemo(() => {
 		if (!startDate || !endDate) return 0;
-		const diff = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+		const diff = Math.round(
+			(endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+		);
 		return diff >= 0 ? diff + 1 : 0;
 	}, [startDate, endDate]);
 
 	const total = days > 0 ? days * listing.price : listing.price;
-	const canBook = currentUser?.role === 'CUSTOMER';
+	const avgRating =
+		listing.reviews.length > 0
+			? listing.reviews.reduce((sum, review) => sum + review.rating, 0) /
+				listing.reviews.length
+			: null;
+
+	function handleRangeSelect(next: DateRange) {
+		if (!next.from || !next.to) return undefined;
+
+		if (rangeIncludesBlocked(next.from, next.to)) {
+			toast.error('Selected dates include unavailable days');
+			return { from: next.from, to: undefined };
+		}
+
+		setRange(next);
+		return next;
+	}
 
 	async function reserve() {
 		if (!currentUser) {
@@ -113,62 +144,66 @@ export function ListingReservationCard({
 	}
 
 	return (
-		<aside className="rounded-xl border border-border bg-card p-5 shadow-lg">
-			<p className="text-lg font-semibold text-foreground">
-				{formatInr(listing.price)}{' '}
-				<span className="text-sm font-normal text-muted-foreground">Per Day</span>
-			</p>
-
-			<div className="mt-5 grid gap-3 sm:grid-cols-2">
-				<div className="space-y-1.5">
-					<Label htmlFor="start-date">Start date</Label>
-					<DatePicker
-						id="start-date"
-						date={startDate}
-						onSelect={(date) => {
-							setStartDate(date);
-							if (date && endDate && endDate <= date) {
-								setEndDate(undefined);
-							}
-						}}
-						placeholder="Start date"
-						disabled={isDisabledDate}
-					/>
+		<aside className="flex flex-col gap-6 border border-structural-border bg-card p-6 shadow-sm sm:p-7">
+			<div className="flex items-end justify-between gap-4 border-b border-structural-border pb-5">
+				<div>
+					<span className="font-headline text-3xl font-bold tracking-tight text-foreground">
+						{formatInr(listing.price)}
+					</span>
+					<span className="ml-1 text-muted-foreground">/ day</span>
 				</div>
-				<div className="space-y-1.5">
-					<Label htmlFor="end-date">End date</Label>
-					<DatePicker
-						id="end-date"
-						date={endDate}
-						onSelect={setEndDate}
-						placeholder="End date"
-						disabled={(date) => {
-							if (isDisabledDate(date)) return true;
-							if (startDate) return date < startDate;
-							return false;
-						}}
-					/>
-				</div>
+				{avgRating !== null ? (
+					<span className="inline-flex items-center gap-1 text-sm font-semibold text-foreground">
+						<Star className="size-4 fill-primary text-primary" aria-hidden />
+						{avgRating.toFixed(1)}
+					</span>
+				) : (
+					<span className="inline-flex items-center gap-1 text-xs tracking-wide text-muted-foreground uppercase">
+						<Shield className="size-3.5 text-primary" aria-hidden />
+						Verified
+					</span>
+				)}
 			</div>
 
+			<div className="border border-structural-border p-3">
+				<p className="label-caps text-[10px] text-muted-foreground">Dates</p>
+				<DateRangePicker
+					id="booking-dates"
+					range={range}
+					onSelect={handleRangeSelect}
+					disabled={isDisabledDate}
+					triggerDisabled={bookingLocked}
+					placeholder="Add dates"
+					className="mt-1.5 h-auto border-0 bg-transparent p-0 px-0 shadow-none hover:bg-transparent has-[>svg]:px-0"
+				/>
+			</div>
 			<Button
 				type="button"
-				className="mt-5 w-full"
+				className="w-full"
 				size="lg"
 				onClick={reserve}
-				disabled={saving || Boolean(currentUser && !canBook)}
+				disabled={saving || bookingLocked}
 			>
 				{saving ? 'Saving...' : 'Reserve'}
 			</Button>
-			{currentUser && !canBook ? (
-				<p className="mt-2 text-center text-xs text-muted-foreground">
-					Only customers are allowed to book a property
-				</p>
-			) : null}
+			<p className="text-center text-sm text-muted-foreground">
+				{bookingLocked
+					? 'Only customers are allowed to book'
+					: "You won't be charged yet"}
+			</p>
 
-			<div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm">
-				<span className="text-muted-foreground">Total</span>
-				<span className="font-semibold text-foreground">{formatInr(total)}</span>
+			<div className="space-y-3 border-t border-structural-border pt-5 text-sm">
+				<div className="flex justify-between gap-4 text-muted-foreground">
+					<span>
+						{formatInr(listing.price)} × {days > 0 ? days : 1}{' '}
+						{(days > 0 ? days : 1) === 1 ? 'day' : 'days'}
+					</span>
+					<span>{formatInr(total)}</span>
+				</div>
+				<div className="flex justify-between gap-4 border-t border-structural-border pt-4 font-headline text-lg font-semibold text-foreground">
+					<span>Total</span>
+					<span>{formatInr(total)}</span>
+				</div>
 			</div>
 		</aside>
 	);

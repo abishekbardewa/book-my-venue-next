@@ -25,13 +25,13 @@ export function EmptyState({
 				className
 			)}
 		>
-			<div className="flex size-14 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-				<Icon className="size-7" aria-hidden />
+			<div className="flex size-16 items-center justify-center border border-structural-border bg-secondary text-muted-foreground">
+				<Icon className="size-8" aria-hidden />
 			</div>
-			<div className="space-y-1.5">
-				<p className="text-base font-medium tracking-tight text-foreground">{title}</p>
+			<div className="space-y-2">
+				<p className="font-headline text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</p>
 				{description ? (
-					<p className="mx-auto max-w-sm text-sm text-muted-foreground">{description}</p>
+					<p className="mx-auto max-w-sm text-sm text-muted-foreground sm:text-base">{description}</p>
 				) : null}
 			</div>
 			{action ? <div className="mt-1">{action}</div> : null}

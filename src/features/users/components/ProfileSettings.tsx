@@ -2,46 +2,76 @@
 
 import { useState } from 'react';
 import { ProfileForm } from '@/features/users/components/ProfileForm';
-import type { AppUser } from '@/features/users/db';
+import { PayoutSettings } from '@/features/payments/components/PayoutSettings';
+import type { PublicAppUser } from '@/features/users/db';
 import { cn } from '@/lib/utils';
 
+type ProfileTab = 'account' | 'payouts';
+
 type ProfileSettingsProps = {
-	user: AppUser;
+	user: PublicAppUser;
+	hasPassword: boolean;
+	initialTab?: ProfileTab;
+	payoutsEnabled?: boolean;
 };
 
-export function ProfileSettings({ user }: ProfileSettingsProps) {
-	const [view, setView] = useState<'account'>('account');
+export function ProfileSettings({
+	user,
+	hasPassword,
+	initialTab = 'account',
+	payoutsEnabled = false,
+}: ProfileSettingsProps) {
+	const showPayouts =
+		payoutsEnabled && (user.role === 'OWNER' || user.role === 'PLATFORM_ADMIN');
+
+	const [view, setView] = useState<ProfileTab>(
+		initialTab === 'payouts' && showPayouts ? 'payouts' : 'account'
+	);
 
 	return (
-		<div className="space-y-8">
-			<div>
-				<h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-					Profile Settings
+		<div>
+			<header className="border-b border-structural-border pb-6">
+				<h1 className="font-headline text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
+					Settings
 				</h1>
-				<p className="mt-1 text-sm text-muted-foreground">Keep your profile up to date</p>
-			</div>
+				<p className="mt-2 text-muted-foreground sm:text-lg">
+					Update your details, photo, and password.
+				</p>
+			</header>
 
-			<div className="lg:grid lg:grid-cols-12 lg:gap-x-8">
-				<aside className="lg:col-span-3">
-					<nav aria-label="Profile sections" className="flex gap-2 lg:flex-col">
+			{showPayouts ? (
+				<nav
+					className="mt-8 flex flex-nowrap gap-2 overflow-x-auto pb-1"
+					aria-label="Settings sections"
+				>
+					{(
+						[
+							{ id: 'account' as const, label: 'Account' },
+							{ id: 'payouts' as const, label: 'Payouts' },
+						] as const
+					).map((tab) => (
 						<button
+							key={tab.id}
 							type="button"
-							onClick={() => setView('account')}
+							onClick={() => setView(tab.id)}
 							className={cn(
-								'rounded-md px-3 py-2 text-left text-sm font-medium transition-colors',
-								view === 'account'
-									? 'bg-secondary text-foreground'
-									: 'text-muted-foreground hover:bg-secondary/70 hover:text-foreground'
+								'shrink-0 border px-4 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition-colors',
+								view === tab.id
+									? 'border-foreground bg-foreground text-background'
+									: 'border-structural-border bg-transparent text-muted-foreground hover:border-foreground hover:text-foreground'
 							)}
 						>
-							Account
+							{tab.label}
 						</button>
-					</nav>
-				</aside>
+					))}
+				</nav>
+			) : null}
 
-				<div className="mt-6 lg:col-span-9 lg:mt-0">
-					{view === 'account' ? <ProfileForm user={user} /> : null}
-				</div>
+			<div className="mt-8">
+				{view === 'account' ? (
+					<ProfileForm user={user} hasPassword={hasPassword} />
+				) : null}
+				{view === 'payouts' && showPayouts ? <PayoutSettings user={user} /> : null}
 			</div>
 		</div>
 	);

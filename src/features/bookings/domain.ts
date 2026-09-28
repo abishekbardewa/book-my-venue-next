@@ -3,16 +3,12 @@ import { env } from '@/data/env/server';
 import { db } from '@/drizzle/db';
 import { BookingTable, PaymentTable, PropertyTable } from '@/drizzle/schema';
 
-const ACTIVE_BOOKING_STATUSES = [
-	'PENDING',
-	'AWAITING_OWNER_APPROVAL',
-	'CONFIRMED',
-] as const;
+const ACTIVE_BOOKING_STATUSES = ['PENDING', 'AWAITING_OWNER_APPROVAL', 'CONFIRMED'] as const;
 
 export class BookingDomainError extends Error {
 	constructor(
 		message: string,
-		public readonly statusCode = 400
+		public readonly statusCode = 400,
 	) {
 		super(message);
 		this.name = 'BookingDomainError';
@@ -43,17 +39,10 @@ function inclusiveDays(startDate: Date, endDate: Date) {
 }
 
 function nextHoldExpiry() {
-	return new Date(
-		Date.now() + env.BOOKING_PENDING_HOLD_MINUTES * 60 * 1000
-	);
+	return new Date(Date.now() + env.BOOKING_PENDING_HOLD_MINUTES * 60 * 1000);
 }
 
-export async function createPendingBooking(input: {
-	startDate: string;
-	endDate: string;
-	userId: string;
-	propertyId: string;
-}) {
+export async function createPendingBooking(input: { startDate: string; endDate: string; userId: string; propertyId: string }) {
 	const startDate = parseDateOnly(input.startDate);
 	const endDate = parseDateOnly(input.endDate);
 	const today = new Date();
@@ -69,10 +58,7 @@ export async function createPendingBooking(input: {
 	}
 
 	return db.transaction(async (tx) => {
-		// Serializes reservation attempts per property, preventing check-then-insert races.
-		await tx.execute(
-			sql`select pg_advisory_xact_lock(hashtext(${input.propertyId}))`
-		);
+		await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.propertyId}))`);
 
 		const [property] = await tx
 			.select({
@@ -86,8 +72,8 @@ export async function createPendingBooking(input: {
 					eq(PropertyTable.id, input.propertyId),
 					eq(PropertyTable.isDeleted, false),
 					eq(PropertyTable.isDraft, false),
-					eq(PropertyTable.listingStatus, 'APPROVED')
-				)
+					eq(PropertyTable.listingStatus, 'APPROVED'),
+				),
 			)
 			.limit(1);
 
@@ -102,13 +88,7 @@ export async function createPendingBooking(input: {
 		const expired = await tx
 			.update(BookingTable)
 			.set({ bookingStatus: 'FAILED', statusReason: 'hold_expired' })
-			.where(
-				and(
-					eq(BookingTable.propertyId, input.propertyId),
-					eq(BookingTable.bookingStatus, 'PENDING'),
-					lte(BookingTable.holdExpiresAt, now)
-				)
-			)
+			.where(and(eq(BookingTable.propertyId, input.propertyId), eq(BookingTable.bookingStatus, 'PENDING'), lte(BookingTable.holdExpiresAt, now)))
 			.returning({ id: BookingTable.id });
 
 		if (expired.length > 0) {
@@ -119,10 +99,10 @@ export async function createPendingBooking(input: {
 					and(
 						inArray(
 							PaymentTable.bookingId,
-							expired.map((booking) => booking.id)
+							expired.map((booking) => booking.id),
 						),
-						eq(PaymentTable.status, 'PENDING')
-					)
+						eq(PaymentTable.status, 'PENDING'),
+					),
 				);
 		}
 
@@ -134,16 +114,13 @@ export async function createPendingBooking(input: {
 					eq(BookingTable.propertyId, input.propertyId),
 					inArray(BookingTable.bookingStatus, [...ACTIVE_BOOKING_STATUSES]),
 					lte(BookingTable.startDate, endDate),
-					gte(BookingTable.endDate, startDate)
-				)
+					gte(BookingTable.endDate, startDate),
+				),
 			)
 			.limit(1);
 
 		if (overlap) {
-			throw new BookingDomainError(
-				'Already booked or temporarily held for the selected date range.',
-				409
-			);
+			throw new BookingDomainError('Already booked or temporarily held for the selected date range.', 409);
 		}
 
 		const totalAmount = parsePropertyPrice(property.price) * days;
@@ -173,25 +150,14 @@ export async function expirePendingBooking(bookingId: string) {
 		const [expired] = await tx
 			.update(BookingTable)
 			.set({ bookingStatus: 'FAILED', statusReason: 'hold_expired' })
-			.where(
-				and(
-					eq(BookingTable.id, bookingId),
-					eq(BookingTable.bookingStatus, 'PENDING'),
-					lte(BookingTable.holdExpiresAt, new Date())
-				)
-			)
+			.where(and(eq(BookingTable.id, bookingId), eq(BookingTable.bookingStatus, 'PENDING'), lte(BookingTable.holdExpiresAt, new Date())))
 			.returning({ id: BookingTable.id });
 
 		if (expired) {
 			await tx
 				.update(PaymentTable)
 				.set({ status: 'FAILED' })
-				.where(
-					and(
-						eq(PaymentTable.bookingId, bookingId),
-						eq(PaymentTable.status, 'PENDING')
-					)
-				);
+				.where(and(eq(PaymentTable.bookingId, bookingId), eq(PaymentTable.status, 'PENDING')));
 		}
 		return Boolean(expired);
 	});
@@ -202,36 +168,20 @@ export async function releasePendingBooking(bookingId: string, userId: string) {
 		const [released] = await tx
 			.update(BookingTable)
 			.set({ bookingStatus: 'FAILED', statusReason: 'released_by_user' })
-			.where(
-				and(
-					eq(BookingTable.id, bookingId),
-					eq(BookingTable.userId, userId),
-					eq(BookingTable.bookingStatus, 'PENDING')
-				)
-			)
+			.where(and(eq(BookingTable.id, bookingId), eq(BookingTable.userId, userId), eq(BookingTable.bookingStatus, 'PENDING')))
 			.returning({ id: BookingTable.id });
 
 		if (released) {
 			await tx
 				.update(PaymentTable)
 				.set({ status: 'FAILED' })
-				.where(
-					and(
-						eq(PaymentTable.bookingId, bookingId),
-						eq(PaymentTable.status, 'PENDING')
-					)
-				);
+				.where(and(eq(PaymentTable.bookingId, bookingId), eq(PaymentTable.status, 'PENDING')));
 		}
 		return Boolean(released);
 	});
 }
 
-export async function createPendingPayment(input: {
-	bookingId: string;
-	userId: string;
-	razorpayOrderId: string;
-	amount: number;
-}) {
+export async function createPendingPayment(input: { bookingId: string; userId: string; razorpayOrderId: string; amount: number }) {
 	const [payment] = await db
 		.insert(PaymentTable)
 		.values({
@@ -247,11 +197,7 @@ export async function createPendingPayment(input: {
 }
 
 export async function getPaymentOrderForBooking(bookingId: string) {
-	const [payment] = await db
-		.select()
-		.from(PaymentTable)
-		.where(eq(PaymentTable.bookingId, bookingId))
-		.limit(1);
+	const [payment] = await db.select().from(PaymentTable).where(eq(PaymentTable.bookingId, bookingId)).limit(1);
 	return payment ?? null;
 }
 
@@ -259,28 +205,14 @@ export async function extendPendingHold(bookingId: string) {
 	const [booking] = await db
 		.update(BookingTable)
 		.set({ holdExpiresAt: nextHoldExpiry() })
-		.where(
-			and(
-				eq(BookingTable.id, bookingId),
-				eq(BookingTable.bookingStatus, 'PENDING'),
-				gt(BookingTable.holdExpiresAt, new Date())
-			)
-		)
+		.where(and(eq(BookingTable.id, bookingId), eq(BookingTable.bookingStatus, 'PENDING'), gt(BookingTable.holdExpiresAt, new Date())))
 		.returning();
 	return booking ?? null;
 }
 
-export async function applyPaymentSuccess(input: {
-	orderId: string;
-	paymentId: string;
-	amountInPaise?: number;
-}) {
-	return db.transaction(async (tx) => {
-		const [payment] = await tx
-			.select()
-			.from(PaymentTable)
-			.where(eq(PaymentTable.razorpayOrderId, input.orderId))
-			.limit(1);
+export async function applyPaymentSuccess(input: { orderId: string; paymentId: string; amountInPaise?: number }) {
+	const result = await db.transaction(async (tx) => {
+		const [payment] = await tx.select().from(PaymentTable).where(eq(PaymentTable.razorpayOrderId, input.orderId)).limit(1);
 
 		if (!payment) {
 			throw new BookingDomainError('Payment order not found', 404);
@@ -292,10 +224,18 @@ export async function applyPaymentSuccess(input: {
 			}
 		}
 		if (payment.status === 'SUCCESS' && payment.transactionId === input.paymentId) {
-			return payment;
+			return {
+				payment,
+				becameAwaiting: false as const,
+				bookingId: payment.bookingId,
+			};
 		}
 		if (payment.status === 'REFUNDED') {
-			return payment;
+			return {
+				payment,
+				becameAwaiting: false as const,
+				bookingId: payment.bookingId,
+			};
 		}
 
 		const [updatedPayment] = await tx
@@ -307,31 +247,34 @@ export async function applyPaymentSuccess(input: {
 			.where(eq(PaymentTable.id, payment.id))
 			.returning();
 
-		await tx
+		const updatedBookings = await tx
 			.update(BookingTable)
 			.set({ bookingStatus: 'AWAITING_OWNER_APPROVAL', statusReason: null })
-			.where(
-				and(
-					eq(BookingTable.id, payment.bookingId),
-					inArray(BookingTable.bookingStatus, ['PENDING', 'FAILED'])
-				)
-			);
+			.where(and(eq(BookingTable.id, payment.bookingId), inArray(BookingTable.bookingStatus, ['PENDING', 'FAILED'])))
+			.returning({ id: BookingTable.id });
 
-		return updatedPayment ?? payment;
+		return {
+			payment: updatedPayment ?? payment,
+			becameAwaiting: updatedBookings.length > 0,
+			bookingId: payment.bookingId,
+		};
 	});
+
+	if (result.becameAwaiting) {
+		try {
+			const { notifyBookingRequest } = await import('@/features/notifications/emit');
+			await notifyBookingRequest(result.bookingId);
+		} catch (error) {
+			console.error('Could not notify booking request:', error);
+		}
+	}
+
+	return result.payment;
 }
 
-export async function applyPaymentFailure(input: {
-	orderId: string;
-	paymentId?: string;
-	amountInPaise?: number;
-}) {
+export async function applyPaymentFailure(input: { orderId: string; paymentId?: string; amountInPaise?: number }) {
 	return db.transaction(async (tx) => {
-		const [payment] = await tx
-			.select()
-			.from(PaymentTable)
-			.where(eq(PaymentTable.razorpayOrderId, input.orderId))
-			.limit(1);
+		const [payment] = await tx.select().from(PaymentTable).where(eq(PaymentTable.razorpayOrderId, input.orderId)).limit(1);
 
 		if (!payment || payment.status !== 'PENDING') {
 			return payment ?? null;
@@ -355,12 +298,7 @@ export async function applyPaymentFailure(input: {
 		await tx
 			.update(BookingTable)
 			.set({ bookingStatus: 'FAILED', statusReason: 'payment_failed' })
-			.where(
-				and(
-					eq(BookingTable.id, payment.bookingId),
-					eq(BookingTable.bookingStatus, 'PENDING')
-				)
-			);
+			.where(and(eq(BookingTable.id, payment.bookingId), eq(BookingTable.bookingStatus, 'PENDING')));
 
 		return updatedPayment ?? payment;
 	});
@@ -370,12 +308,7 @@ export async function getSuccessfulPaymentForBooking(bookingId: string) {
 	const [payment] = await db
 		.select()
 		.from(PaymentTable)
-		.where(
-			and(
-				eq(PaymentTable.bookingId, bookingId),
-				eq(PaymentTable.status, 'SUCCESS')
-			)
-		)
+		.where(and(eq(PaymentTable.bookingId, bookingId), eq(PaymentTable.status, 'SUCCESS')))
 		.limit(1);
 	return payment ?? null;
 }

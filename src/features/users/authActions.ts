@@ -124,3 +124,7 @@ export async function signInAction(
 
 	redirect(getPostAuthPath(user));
 }
+
+export async function signInWithGoogleAction() {
+	await signIn('google', { redirectTo: '/onboarding' });
+}

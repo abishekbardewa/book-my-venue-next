@@ -6,7 +6,7 @@ import { expirePendingBooking } from '@/features/bookings/domain';
 import { getCurrentUser } from '@/features/users/getCurrentUser';
 
 export const metadata: Metadata = {
-	title: 'Confirm and Pay',
+	title: 'Review your booking',
 	robots: { index: false, follow: false },
 };
 
@@ -39,6 +39,7 @@ export default async function PaymentPage({ searchParams }: PaymentPageProps) {
 				firstName: user.firstName,
 				lastName: user.lastName,
 				email: user.email,
+				phone: user.phone,
 			}}
 		/>
 	);

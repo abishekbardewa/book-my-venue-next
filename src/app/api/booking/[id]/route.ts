@@ -4,7 +4,17 @@ import {
 	updateBookingAndPaymentStatus,
 } from '@/features/bookings/db';
 import type { BookingStatus, PaymentStatus } from '@/features/bookings/constants';
-import { refundSuccessfulBookingPayment } from '@/features/payments/refund';
+import { getSuccessfulPaymentForBooking } from '@/features/bookings/domain';
+import {
+	notifyBookingCancelledByGuest,
+	notifyBookingConfirmed,
+	notifyBookingRejected,
+} from '@/features/notifications/emit';
+import {
+	arePayoutsEnabled,
+	transferOwnerShareForBooking,
+} from '@/features/payments/payouts';
+import { getUserById } from '@/features/users/db';
 import { getCurrentUser } from '@/features/users/getCurrentUser';
 
 type RouteContext = {
@@ -74,13 +84,45 @@ export async function PUT(request: Request, { params }: RouteContext) {
 			return NextResponse.json({ error: 'Invalid operation' }, { status: 400 });
 		}
 
-		if (body.bookingStatus === 'CANCELLED') {
-			try {
-				await refundSuccessfulBookingPayment(id);
-			} catch (error) {
-				console.error('Owner rejection refund failed:', error);
+		if (body.bookingStatus === 'CONFIRMED' && arePayoutsEnabled()) {
+			const owner = await getUserById(userId);
+			if (!owner?.razorpayLinkedAccountId || owner.payoutOnboardingStatus !== 'ACTIVE') {
 				return NextResponse.json(
-					{ message: 'Could not refund payment', success: false },
+					{
+						message: 'Set up payouts before confirming a booking',
+						success: false,
+					},
+					{ status: 400 }
+				);
+			}
+
+			const payment = await getSuccessfulPaymentForBooking(id);
+			if (!payment?.transactionId) {
+				return NextResponse.json(
+					{ message: 'No successful payment found for this booking', success: false },
+					{ status: 400 }
+				);
+			}
+
+			try {
+				await transferOwnerShareForBooking({
+					bookingId: id,
+					paymentId: payment.id,
+					razorpayPaymentId: payment.transactionId,
+					amount: payment.amount,
+					currency: payment.currency,
+					linkedAccountId: owner.razorpayLinkedAccountId,
+				});
+			} catch (error) {
+				console.error('Owner confirm transfer failed:', error);
+				return NextResponse.json(
+					{
+						message:
+							error instanceof Error
+								? error.message
+								: 'Could not transfer owner share',
+						success: false,
+					},
 					{ status: 502 }
 				);
 			}
@@ -93,6 +135,17 @@ export async function PUT(request: Request, { params }: RouteContext) {
 			statusReason:
 				body.bookingStatus === 'CANCELLED' ? 'owner_rejected' : null,
 		});
+
+		try {
+			if (body.bookingStatus === 'CONFIRMED') {
+				await notifyBookingConfirmed(id);
+			} else {
+				await notifyBookingRejected(id);
+			}
+		} catch (error) {
+			console.error('Could not notify booking owner decision:', error);
+		}
+
 		return NextResponse.json({
 			message:
 				body.bookingStatus === 'CONFIRMED'
@@ -122,22 +175,19 @@ export async function PUT(request: Request, { params }: RouteContext) {
 			);
 		}
 
-		try {
-			await refundSuccessfulBookingPayment(id);
-		} catch (error) {
-			console.error('Customer cancellation refund failed:', error);
-			return NextResponse.json(
-				{ message: 'Could not refund payment', success: false },
-				{ status: 502 }
-			);
-		}
-
 		const updated = await updateBookingAndPaymentStatus({
 			bookingId: id,
 			bookingStatus: 'CANCELLED',
 			paymentStatus: 'REFUNDED',
 			statusReason: 'customer_cancelled',
 		});
+
+		try {
+			await notifyBookingCancelledByGuest(id);
+		} catch (error) {
+			console.error('Could not notify guest cancellation:', error);
+		}
+
 		return NextResponse.json({
 			message: 'Booking canceled successfully',
 			status: 200,

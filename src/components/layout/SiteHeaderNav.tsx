@@ -2,55 +2,63 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Building2, CalendarDays, ClipboardList } from 'lucide-react';
 import type { AppUserRole } from '@/features/users/db';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
 	href: string;
 	label: string;
-	icon: typeof Building2;
 	match: (pathname: string) => boolean;
 };
 
-function isOwnerPropertyPath(pathname: string) {
+function isOwnerListingPath(pathname: string) {
 	if (!pathname.startsWith('/owner')) return false;
 	if (pathname.startsWith('/owner/bookings')) return false;
 	return true;
 }
 
-function linksForRole(role: AppUserRole): NavItem[] {
+const PUBLIC_LINKS: NavItem[] = [
+	{
+		href: '/',
+		label: 'Discover',
+		match: (pathname) => pathname === '/',
+	},
+	{
+		href: '/listings',
+		label: 'Listings',
+		match: (pathname) => pathname === '/listings' || pathname.startsWith('/listings/'),
+	},
+];
+
+function roleLinks(role: AppUserRole | null): NavItem[] {
+	if (!role) return [];
 	switch (role) {
 		case 'CUSTOMER':
 			return [
 				{
 					href: '/bookings',
 					label: 'Bookings',
-					icon: CalendarDays,
 					match: (pathname) => pathname.startsWith('/bookings'),
 				},
 			];
 		case 'OWNER':
 			return [
 				{
-					href: '/owner/bookings',
-					label: 'Booking',
-					icon: CalendarDays,
-					match: (pathname) => pathname.startsWith('/owner/bookings'),
+					href: '/owner',
+					label: 'Listing Management',
+					match: isOwnerListingPath,
 				},
 				{
-					href: '/owner',
-					label: 'Property',
-					icon: Building2,
-					match: isOwnerPropertyPath,
+					href: '/owner/bookings',
+					label: 'Manage Bookings',
+					match: (pathname) => pathname.startsWith('/owner/bookings'),
 				},
 			];
 		case 'PLATFORM_ADMIN':
 			return [
 				{
 					href: '/admin',
-					label: 'Listings',
-					icon: ClipboardList,
+					label: 'Listings Management',
 					match: (pathname) => pathname.startsWith('/admin'),
 				},
 			];
@@ -60,33 +68,31 @@ function linksForRole(role: AppUserRole): NavItem[] {
 }
 
 type SiteHeaderNavProps = {
-	role: AppUserRole;
+	role: AppUserRole | null;
 };
 
 export function SiteHeaderNav({ role }: SiteHeaderNavProps) {
 	const pathname = usePathname();
-	const links = linksForRole(role);
-
-	if (links.length === 0) {
-		return null;
-	}
+	const links = [...PUBLIC_LINKS, ...roleLinks(role)];
 
 	return (
-		<nav aria-label="Primary" className="flex shrink-0 items-center gap-5 sm:gap-6">
+		<nav
+			aria-label="Primary"
+			className="hidden items-center gap-8 md:flex lg:gap-10"
+		>
 			{links.map((item) => {
-				const Icon = item.icon;
 				const active = item.match(pathname);
-
 				return (
 					<Link
-						key={item.href}
+						key={`${item.href}-${item.label}`}
 						href={item.href}
 						className={cn(
-							'inline-flex items-center gap-1.5 text-sm transition-colors',
-							active ? 'font-semibold text-foreground' : 'font-medium text-muted-foreground hover:text-foreground',
+							'label-caps border-b-2 pb-1 transition-[color,border-color] duration-200',
+							active
+								? 'border-primary text-foreground'
+								: 'border-transparent text-muted-foreground hover:border-foreground/20 hover:text-foreground'
 						)}
 					>
-						<Icon className="size-4" aria-hidden />
 						{item.label}
 					</Link>
 				);

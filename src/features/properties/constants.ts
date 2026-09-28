@@ -25,11 +25,23 @@ export const PROPERTY_CATEGORIES = [
 ] as const;
 
 export const PROPERTY_FORM_STEPS = [
-	{ key: 'details', label: 'Property details' },
-	{ key: 'location', label: 'Location' },
-	{ key: 'images', label: 'Images' },
-	{ key: 'categories', label: 'Categories & amenities' },
-	{ key: 'extra', label: 'Additional info' },
+	{ key: 'details', label: 'Property Details', shortLabel: 'Property Details' },
+	{ key: 'location', label: 'Venue Location', shortLabel: 'Location' },
+	{ key: 'images', label: 'Photos & Media', shortLabel: 'Photos & Media' },
+	{ key: 'categories', label: 'Categories & Amenities', shortLabel: 'Categories' },
+	{ key: 'extra', label: 'Additional Info', shortLabel: 'Additional Info' },
+	{ key: 'review', label: 'Review & Submit', shortLabel: 'Review' },
+] as const;
+
+export const SUGGESTED_AMENITIES = [
+	'High-Speed WiFi',
+	'Climate Control',
+	'Parking',
+	'Sound System',
+	'Projector',
+	'Catering Kitchen',
+	'Stage',
+	'Wheelchair Accessible',
 ] as const;
 
 export type PropertyFormStepKey = (typeof PROPERTY_FORM_STEPS)[number]['key'];

@@ -1,4 +1,13 @@
-import { boolean, pgEnum, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
+import {
+	boolean,
+	integer,
+	pgEnum,
+	pgTable,
+	text,
+	timestamp,
+	uuid,
+	varchar,
+} from 'drizzle-orm/pg-core';
 import { createdAt, id, updatedAt } from '../schemaHelpers';
 import { UserTable } from './user';
 
@@ -25,7 +34,10 @@ export const PropertyTable = pgTable('properties', {
 	extraInfo: varchar({ length: 400 }),
 	isDraft: boolean().notNull().default(false),
 	listingStatus: listingStatusEnum(),
+	listingSubmissionCount: integer().notNull().default(0),
 	listingRejectionReason: text(),
+	listingRejectionReasonCode: varchar({ length: 40 }),
+	listingAllowsResubmit: boolean(),
 	listingReviewedBy: uuid().references(() => UserTable.id),
 	listingReviewedAt: timestamp({ withTimezone: true }),
 	ownerId: uuid()
@@ -40,6 +52,7 @@ export const PropertyImageTable = pgTable('property_images', {
 	id,
 	imgUrl: varchar().notNull(),
 	caption: varchar(),
+	imagekitFileId: varchar(),
 	propertyId: uuid()
 		.notNull()
 		.references(() => PropertyTable.id),

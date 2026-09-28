@@ -14,6 +14,8 @@ import type {
 } from '@/features/bookings/constants';
 import type { BookingDetail, BookingListItem } from '@/features/bookings/types';
 import { LISTING_IMAGE_PLACEHOLDER } from '@/features/properties/types';
+import { listReviewsByBookingIds } from '@/features/reviews/db';
+import { isReviewWindowOpen } from '@/features/reviews/window';
 
 async function attachBookingRelations(
 	bookings: (typeof BookingTable.$inferSelect)[]
@@ -24,7 +26,7 @@ async function attachBookingRelations(
 	const propertyIds = [...new Set(bookings.map((booking) => booking.propertyId))];
 	const userIds = [...new Set(bookings.map((booking) => booking.userId))];
 
-	const [properties, users, payments, images] = await Promise.all([
+	const [properties, users, payments, images, reviews] = await Promise.all([
 		db.select().from(PropertyTable).where(inArray(PropertyTable.id, propertyIds)),
 		db.select().from(UserTable).where(inArray(UserTable.id, userIds)),
 		db
@@ -40,6 +42,7 @@ async function attachBookingRelations(
 			.select()
 			.from(PropertyImageTable)
 			.where(inArray(PropertyImageTable.propertyId, propertyIds)),
+		listReviewsByBookingIds(bookingIds),
 	]);
 
 	const propertyById = new Map(properties.map((property) => [property.id, property]));
@@ -56,12 +59,14 @@ async function attachBookingRelations(
 			imageByProperty.set(image.propertyId, image.imgUrl);
 		}
 	}
+	const reviewByBooking = new Map(reviews.map((review) => [review.bookingId, review]));
 
 	return bookings.flatMap((booking) => {
 		const property = propertyById.get(booking.propertyId);
 		const user = userById.get(booking.userId);
 		if (!property || !user) return [];
 
+		const review = reviewByBooking.get(booking.id);
 		return [{
 			id: booking.id,
 			startDate: booking.startDate.toISOString(),
@@ -79,6 +84,11 @@ async function attachBookingRelations(
 				price: Number.parseInt(property.price.replace(/[^\d]/g, ''), 10) || 0,
 				image: imageByProperty.get(property.id) ?? LISTING_IMAGE_PLACEHOLDER,
 				ownerId: property.ownerId,
+				city: property.city,
+				address: property.address,
+				checkInTime: property.checkInTime,
+				checkOutTime: property.checkOutTime,
+				capacity: property.capacity,
 			},
 			user: {
 				id: user.id,
@@ -94,6 +104,10 @@ async function attachBookingRelations(
 				transactionId: payment.transactionId,
 				razorpayOrderId: payment.razorpayOrderId,
 			})),
+			review: review
+				? { id: review.id, rating: review.rating, body: review.body }
+				: null,
+			reviewWindowOpen: isReviewWindowOpen(booking.endDate),
 		}];
 	});
 }
@@ -130,15 +144,21 @@ export async function listCustomerBookings(input: {
 
 export async function listOwnerBookings(input: {
 	ownerId: string;
-	status: BookingStatus;
+	status: BookingStatus | 'ALL';
 	page: number;
 	limit: number;
 }) {
 	const offset = (input.page - 1) * input.limit;
-	const where = and(
-		eq(PropertyTable.ownerId, input.ownerId),
-		eq(BookingTable.bookingStatus, input.status)
-	);
+	const statusFilter =
+		input.status === 'ALL'
+			? inArray(BookingTable.bookingStatus, [
+					'AWAITING_OWNER_APPROVAL',
+					'CONFIRMED',
+					'CANCELLED',
+					'COMPLETED',
+				])
+			: eq(BookingTable.bookingStatus, input.status);
+	const where = and(eq(PropertyTable.ownerId, input.ownerId), statusFilter);
 	const [[total], rows] = await Promise.all([
 		db
 			.select({ value: count() })
@@ -197,11 +217,7 @@ export async function getBookingById(id: string): Promise<BookingDetail | null> 
 		...base,
 		property: {
 			...base.property,
-			address: property.address,
-			city: property.city,
 			country: property.country,
-			checkInTime: property.checkInTime,
-			checkOutTime: property.checkOutTime,
 		},
 		owner: {
 			id: owner.id,

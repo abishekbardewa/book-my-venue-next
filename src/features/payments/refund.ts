@@ -11,5 +11,6 @@ export async function refundSuccessfulBookingPayment(bookingId: string) {
 		amount: Math.round(Number(payment.amount) * 100),
 		speed: 'normal',
 		notes: { bookingId },
+		reverse_all: Boolean(payment.razorpayTransferId),
 	});
 }

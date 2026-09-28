@@ -2,9 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { completeUserOnboarding, updateUserProfile } from '@/features/users/db';
+import { arePayoutsEnabled } from '@/features/payments/payouts';
+import { completeUserOnboarding, updateUserPassword, updateUserProfile } from '@/features/users/db';
 import { getCurrentUser } from '@/features/users/getCurrentUser';
-import { onboardingSchema, profileSchema } from '@/features/users/schemas';
+import { changePasswordSchema, onboardingSchema, profileSchema } from '@/features/users/schemas';
 import { getPostAuthPath } from '@/features/users/postAuthPath';
 import { formDataToObject, zodFieldErrors } from '@/lib/forms/formUtils';
 
@@ -80,6 +81,10 @@ export async function completeOnboardingAction(
 		return { error: 'Could not update your profile' };
 	}
 
+	if (user.role === 'OWNER' && arePayoutsEnabled()) {
+		redirect('/owner?payoutPrompt=1');
+	}
+
 	redirect(getPostAuthPath(user));
 }
 
@@ -98,8 +103,8 @@ export async function updateProfileAction(
 	_prev: ProfileActionState,
 	formData: FormData
 ): Promise<ProfileActionState> {
-	const { userId } = await getCurrentUser();
-	if (!userId) {
+	const { userId, user } = await getCurrentUser();
+	if (!userId || !user) {
 		return { error: 'Sign in to continue' };
 	}
 
@@ -118,13 +123,32 @@ export async function updateProfileAction(
 	}
 
 	try {
-		const user = await updateUserProfile(userId, {
+		const removeAvatar = values.removeAvatar === 'true';
+		const avatarUrl = values.avatarUrl?.trim() || '';
+		const avatarImagekitFileId = values.avatarImagekitFileId?.trim() || '';
+
+		if (removeAvatar && user.avatarImagekitFileId) {
+			const { deleteImageKitFile } = await import('@/features/uploads/imagekit');
+			await deleteImageKitFile(user.avatarImagekitFileId);
+		}
+
+		if (avatarUrl && avatarImagekitFileId && user.avatarImagekitFileId) {
+			const { deleteImageKitFile } = await import('@/features/uploads/imagekit');
+			await deleteImageKitFile(user.avatarImagekitFileId);
+		}
+
+		const updated = await updateUserProfile(userId, {
 			firstName: parsed.data.firstName,
 			lastName: parsed.data.lastName,
 			phone: parsed.data.phone,
+			...(removeAvatar
+				? { avatar: null, avatarImagekitFileId: null }
+				: avatarUrl && avatarImagekitFileId
+					? { avatar: avatarUrl, avatarImagekitFileId }
+					: {}),
 		});
 
-		if (!user) {
+		if (!updated) {
 			return {
 				error: 'Could not update your profile',
 				values: {
@@ -157,7 +181,7 @@ export async function updateProfileAction(
 		};
 	}
 
-	revalidatePath('/profile');
+	revalidatePath('/settings');
 	return {
 		success: true,
 		values: {
@@ -166,4 +190,50 @@ export async function updateProfileAction(
 			phone: parsed.data.phone,
 		},
 	};
+}
+
+export type ChangePasswordActionState = {
+	error?: string;
+	success?: boolean;
+	fieldErrors?: Partial<Record<string, string>>;
+};
+
+export async function changePasswordAction(
+	_prev: ChangePasswordActionState,
+	formData: FormData
+): Promise<ChangePasswordActionState> {
+	const { userId, user } = await getCurrentUser();
+	if (!userId || !user) {
+		return { error: 'Sign in to continue' };
+	}
+
+	if (!user.password) {
+		return { error: 'Password change is not available for this account' };
+	}
+
+	const values = formDataToObject(formData);
+	const parsed = changePasswordSchema.safeParse(values);
+
+	if (!parsed.success) {
+		return {
+			fieldErrors: zodFieldErrors(changePasswordSchema, values),
+		};
+	}
+
+	const { compare, hash } = await import('bcryptjs');
+	const valid = await compare(parsed.data.currentPassword, user.password);
+	if (!valid) {
+		return {
+			fieldErrors: { currentPassword: 'Current password is incorrect' },
+		};
+	}
+
+	const passwordHash = await hash(parsed.data.newPassword, 12);
+	const updated = await updateUserPassword(userId, passwordHash);
+	if (!updated) {
+		return { error: 'Could not update your password' };
+	}
+
+	revalidatePath('/settings');
+	return { success: true };
 }
