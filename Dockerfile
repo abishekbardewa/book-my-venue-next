@@ -20,7 +20,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-RUN --mount=type=secret,id=env,target=/app/.env npm run build
+RUN --mount=type=secret,id=env,target=/app/.env \
+    echo "Checking BuildKit env secret..." && \
+    test -s /app/.env && \
+    echo "✓ /app/.env exists and is non-empty" && \
+    echo "Env variable count:" && \
+    grep -E '^[A-Za-z_][A-Za-z0-9_]*=' /app/.env | wc -l && \
+    npm run build
 
 
 # Production image
