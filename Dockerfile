@@ -22,8 +22,9 @@ COPY . .
 
 RUN --mount=type=secret,id=env,target=/app/.env \
     echo "=== BuildKit secret diagnostic ===" && \
-    ls -la /app/.env && \
-    wc -c /app/.env && \
+    echo "Variable count: $(grep -c '=' /app/.env)" && \
+    echo "Variable names:" && \
+    cut -d= -f1 /app/.env | sort && \
     echo "=== End diagnostic ===" && \
     npm run build
 
