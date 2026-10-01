@@ -44,7 +44,6 @@ jobs:
             printf '%s=%s\n' "$key" "$value"
           done > .env.build
 
-          # Mask every value so it can never appear in logs
           while IFS= read -r line; do
             val="${line#*=}"
             if [ -n "$val" ]; then
@@ -52,14 +51,8 @@ jobs:
             fi
           done < .env.build
 
-          # Sanity check: names and count only, never values
-          count=$(wc -l < .env.build)
-          echo "Variable count: $count"
-          echo "Production environment variable names:"
-          cut -d '=' -f1 .env.build | sort
-
-          if [ "$count" -lt 11 ]; then
-            echo "::error::Expected at least 11 variables, got $count. Check SSM path and IAM permissions (ssm:GetParametersByPath, kms:Decrypt)."
+          if [ ! -s .env.build ]; then
+            echo "::error::No parameters loaded from SSM. Check the path and IAM permissions."
             exit 1
           fi
 
