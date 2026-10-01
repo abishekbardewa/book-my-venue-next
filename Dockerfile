@@ -21,11 +21,6 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 RUN --mount=type=secret,id=env,target=/app/.env \
-    echo "=== BuildKit secret diagnostic ===" && \
-    echo "Variable count: $(grep -c '=' /app/.env)" && \
-    echo "Variable names:" && \
-    cut -d= -f1 /app/.env | sort && \
-    echo "=== End diagnostic ===" && \
     npm run build
 
 
